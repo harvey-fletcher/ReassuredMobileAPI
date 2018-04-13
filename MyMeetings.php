@@ -2,6 +2,9 @@
     //Include all the API settings
     include_once('api_settings.php');
 
+    //Include common functions so we can auth the user
+    include_once('common_functions.php');
+
     //This is where we store the details of the user making the request
     $user = array();
 
@@ -13,7 +16,7 @@
 
     //Take the received JSON array and convert it into a useable php array.
     $_POST = json_decode($_POST['data'], true);
-
+/**
     //First of all, we will need the username and password, if we have them, check the user exists
     if(!isset($_POST['email']) || !isset($_POST['password']) ){
         $data = array("status"=>"403", "reason"=>"You must provide username and password");
@@ -32,6 +35,11 @@
             $user = mysqli_fetch_array($result, MYSQLI_ASSOC);
        }
     }
+**/
+
+    //Authorise the user
+    auth($_POST['email'], $_POST['password']);
+    $user = $GLOBALS['USER'];
 
     //We will also need an action
     if(!isset($_POST['action'])){
