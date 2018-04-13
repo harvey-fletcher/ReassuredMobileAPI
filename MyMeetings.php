@@ -5,9 +5,6 @@
     //Include common functions so we can auth the user
     include_once('common_functions.php');
 
-    //This is where we store the details of the user making the request
-    $user = array();
-
     //This is the data
     $data = array();
 
@@ -19,7 +16,6 @@
 
     //Authorise the user
     auth($_POST['email'], $_POST['password']);
-    $user = $GLOBALS['USER'];
 
     //We will also need an action
     if(!isset($_POST['action'])){
@@ -55,7 +51,7 @@
             //We need to add all the attendees on the meeting
             $invited = json_decode($meeting['invited']);
             $attending = json_decode($meeting['attending']);
-            $declined = json_decode($meeting['declinded']);
+            $declined = json_decode($meeting['declined']);
 
             //Can the user accept the meeting?
             if(in_array($GLOBALS['USER']['id'], $invited) && (!in_array($GLOBALS['USER']['id'], $attending) || in_array($GLOBALS['USER']['id'], $declined))){
@@ -79,7 +75,7 @@
             //We need to add all the attendees on the meeting
             $invited = json_decode($meeting['invited']);
             $attending = json_decode($meeting['attending']);
-            $declined = json_decode($meeting['declinded']);
+            $declined = json_decode($meeting['declined']);
 
             //Can the user accept the meeting?
             if(in_array($GLOBALS['USER']['id'], $invited) && (!in_array($GLOBALS['USER']['id'], $attending) || in_array($GLOBALS['USER']['id'], $declined))){
@@ -104,7 +100,7 @@
             $invited_user_ids = $meeting['invited'];
             $attending = json_decode($meeting['attending']);
 	    $attending_user_ids = $meeting['attending'];
-            $declined = json_decode($meeting['declinded']);
+            $declined = json_decode($meeting['declined']);
 
             //Can the user accept the meeting?
             if(in_array($GLOBALS['USER']['id'], $invited) && (!in_array($GLOBALS['USER']['id'], $attending) || in_array($GLOBALS['USER']['id'], $declined))){
