@@ -16,26 +16,6 @@
 
     //Take the received JSON array and convert it into a useable php array.
     $_POST = json_decode($_POST['data'], true);
-/**
-    //First of all, we will need the username and password, if we have them, check the user exists
-    if(!isset($_POST['email']) || !isset($_POST['password']) ){
-        $data = array("status"=>"403", "reason"=>"You must provide username and password");
-        $data = array($data);
-        done($data);
-    } else {
-        //This is the query used to select the data
-        $query = "SELECT * FROM users WHERE email='". $_POST['email'] ."' AND password='". $_POST['password'] ."'";
-        $result = mysqli_query($conn, $query);
-
-        if(mysqli_num_rows($result) != 1){
-            $data = array("status"=>"403", "reason"=>"Email or password incorrect");
-            $data = array($data);
-            done($data);
-       } else {
-            $user = mysqli_fetch_array($result, MYSQLI_ASSOC);
-       }
-    }
-**/
 
     //Authorise the user
     auth($_POST['email'], $_POST['password']);
@@ -78,14 +58,14 @@
             $declined = json_decode($meeting['declinded']);
 
             //Can the user accept the meeting?
-            if(in_array($user['id'], $invited) && (!in_array($user['id'], $attending) || in_array($user['id'], $declined))){
+            if(in_array($GLOBALS['USER']['id'], $invited) && (!in_array($GLOBALS['USER']['id'], $attending) || in_array($GLOBALS['USER']['id'], $declined))){
                 $meeting['can_accept'] = 1;
             } else {
                 $meeting['can_accept'] = 0;
             }
 
             //If the user is the organizer, is invited to, or attending the meeting, display it in the today[] array.
-            if(($user['id'] == $meeting['organizer']) || in_array($user['id'], $invited) || in_array($user['id'], $attending)){
+            if(($GLOBALS['USER']['id'] == $meeting['organizer']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
                 array_push($data['today'], json_encode($meeting, JSON_FORCE_OBJECT));
             }
         }
@@ -102,13 +82,13 @@
             $declined = json_decode($meeting['declinded']);
 
             //Can the user accept the meeting?
-            if(in_array($user['id'], $invited) && (!in_array($user['id'], $attending) || in_array($user['id'], $declined))){
+            if(in_array($GLOBALS['USER']['id'], $invited) && (!in_array($GLOBALS['USER']['id'], $attending) || in_array($GLOBALS['USER']['id'], $declined))){
                 $meeting['can_accept'] = 1;
             } else {
                 $meeting['can_accept'] = 0;
             }
 
-            if(($user['id'] == $meeting['organizer']) || in_array($user['id'], $invited) || in_array($user['id'], $attending)){
+            if(($GLOBALS['USER']['id'] == $meeting['organizer']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
                 array_push($data['tomorrow'], json_encode($meeting, JSON_FORCE_OBJECT));
             }
         }
@@ -127,13 +107,13 @@
             $declined = json_decode($meeting['declinded']);
 
             //Can the user accept the meeting?
-            if(in_array($user['id'], $invited) && (!in_array($user['id'], $attending) || in_array($user['id'], $declined))){
+            if(in_array($GLOBALS['USER']['id'], $invited) && (!in_array($GLOBALS['USER']['id'], $attending) || in_array($GLOBALS['USER']['id'], $declined))){
                 $meeting['can_accept'] = 1;
             } else {
                 $meeting['can_accept'] = 0;
             }
 
-            if(($user['id'] == $meeting['organizer']) || in_array($user['id'], $invited) || in_array($user['id'], $attending)){
+            if(($GLOBALS['USER']['id'] == $meeting['organizer']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
                 array_push($data['future'], json_encode($meeting, JSON_FORCE_OBJECT));
             }
         }
@@ -157,7 +137,7 @@
 
         $currentlyaccepted = json_decode($currentlyaccepted);
 
-        array_push($currentlyaccepted, (int)$user['id']);
+        array_push($currentlyaccepted, (int)$GLOBALS['USER']['id']);
 
         $currentlyaccepted = json_encode(array_values($currentlyaccepted), 1);
 
@@ -189,17 +169,17 @@
         $currentlyaccepted = json_decode($currentlyaccepted);
 
 	//Delete the user from the accepted array if it exists
-        if (($key = array_search($user['id'], $currentlyaccepted)) !== false) {
+        if (($key = array_search($GLOBALS['USER']['id'], $currentlyaccepted)) !== false) {
             unset($currentlyaccepted[$key]);
         }
 
         //Remove the user from the invited list
-        if (($key = array_search($user['id'], $currentlyinvited)) !== false) {
+        if (($key = array_search($GLOBALS['USER']['id'], $currentlyinvited)) !== false) {
             unset($currentlyinvited[$key]);
         }
 
         //Insert the user into the declined array
-        array_push($currentlydeclined, (int)$user['id']);
+        array_push($currentlydeclined, (int)$GLOBALS['USER']['id']);
 
         //Turn the arrays back into JSON for storage
         $currentlyaccepted = json_encode(array_values($currentlyaccepted), 1);
@@ -304,10 +284,10 @@
 	echo '[{"status":"200"}]';
 
 	//We want to invite the other people to the meeting
-	InviteAttendees($conn, $user['firstname'], $user['lastname'], $_POST['invitees'], $notifications_key);
+	InviteAttendees($conn, $GLOBALS['USER']['firstname'], $GLOBALS['USER']['lastname'], $_POST['invitees'], $notifications_key);
 
 	//Insert the new meeting into our table
-	$query = "INSERT INTO scheduled_meetings (`organizer_id`,`location`,`title`,`start_time`,`duration`,`invited`) VALUES ('".$user['id']."','".$_POST['venueName']."','".$_POST['name']."','". $_POST['start_time'] ."','".$_POST['duration']."','".json_encode($_POST['invitees'])."')";
+	$query = "INSERT INTO scheduled_meetings (`organizer_id`,`location`,`title`,`start_time`,`duration`,`invited`) VALUES ('".$GLOBALS['USER']['id']."','".$_POST['venueName']."','".$_POST['name']."','". $_POST['start_time'] ."','".$_POST['duration']."','".json_encode($_POST['invitees'])."')";
 	mysqli_query($conn, $query);
 
         //Done
