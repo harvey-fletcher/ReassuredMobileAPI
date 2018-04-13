@@ -19,14 +19,15 @@
 
     //We will also need an action
     if(!isset($_POST['action'])){
-        $data = array("status"=>"403", "reason"=>"You must provide an action");
-        $data = array($data);
+        $data = array(array("status"=>"403", "reason"=>"You must provide an action"));
         done($data);
     } else {
         //Give action a shortname
 	$action = $_POST['action'];
     }
 
+    // If the action is ListPersonalMeetings, we want to return an array of the user's meetings where they
+    // are in the "invited" or "attending" arrays for that meeting.
     if($action == 'ListPersonalMeetings'){
         //Set up the date ranges that we need
         $tomorrow_start = date('Y-m-d H:i:s', mktime(0, 0, 00, date('m'), date('d')+1, date('Y')));
@@ -103,12 +104,14 @@
             $declined = json_decode($meeting['declined']);
 
             //Can the user accept the meeting?
+            //Only users who are invited, not already attending, and not already declined can accept a meeting
             if(in_array($GLOBALS['USER']['id'], $invited) && (!in_array($GLOBALS['USER']['id'], $attending) || in_array($GLOBALS['USER']['id'], $declined))){
                 $meeting['can_accept'] = 1;
             } else {
                 $meeting['can_accept'] = 0;
             }
 
+            //If the user is the organiser, is invited, or is attending the meeting, add them to the output.
             if(($GLOBALS['USER']['id'] == $meeting['organizer']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
                 array_push($data['future'], json_encode($meeting, JSON_FORCE_OBJECT));
             }
@@ -129,22 +132,30 @@
         //Get the current accepted users for that meeting
         $query = "SELECT * FROM scheduled_meetings WHERE id=" . $_POST['meetingID'];
         $result = mysqli_query($conn, $query);
+
+        //Extract the meeting from the MYSQLI Result Set
         $currentlyaccepted = mysqli_fetch_array($result, MYSQLI_ASSOC)['attending'];
 
+        //This is a list of users who have already accepted the meeting request.
         $currentlyaccepted = json_decode($currentlyaccepted);
 
+        //Add the current user into the accepted users array so they display
         array_push($currentlyaccepted, (int)$GLOBALS['USER']['id']);
 
+        //We need to change the list into a JSONArray so that it can be stored in the database
         $currentlyaccepted = json_encode(array_values($currentlyaccepted), 1);
 
         //Update the database
         $query = "UPDATE scheduled_meetings SET attending='" . $currentlyaccepted . "' WHERE id=". $_POST['meetingID'];
         $result = mysqli_query($conn, $query);
 
+        //Output a success message
         echo '[{"status":"200","reason":"Success"}]';
 
+        //We want to die() so the user can't break anything else #Security
+        die();
     }
-	
+
     //This code block will decline a meeting
     if($action == 'DeclineMeeting'){
         if(!isset($_POST['meetingID'])){
@@ -155,14 +166,14 @@
 
         //Get the current accepted users for that meeting
         $query = "SELECT * FROM scheduled_meetings WHERE id=" . $_POST['meetingID'];
-        $result = mysqli_fetch_array(mysqli_query($conn, $query), MYSQLI_ASSOC);
-        $currentlyinvited = $result['invited'];
-        $currentlydeclined = $result['declined'];
-        $currentlyaccepted = $result['attending'];
 
-        $currentlyinvited = json_decode($currentlyinvited);
-        $currentlydeclined = json_decode($currentlydeclined);
-        $currentlyaccepted = json_decode($currentlyaccepted);
+        //Execute the query and then store the result in an array.
+        $result = mysqli_fetch_array(mysqli_query($conn, $query), MYSQLI_ASSOC);
+
+        //Get the lists of the users that were invited to the meeting
+        $currentlyinvited = json_decode($result['invited']);
+        $currentlydeclined = json_decode($result['declined']);
+        $currentlyaccepted = json_decode($result['attending']);
 
 	//Delete the user from the accepted array if it exists
         if (($key = array_search($GLOBALS['USER']['id'], $currentlyaccepted)) !== false) {
@@ -186,10 +197,15 @@
         $query = "UPDATE scheduled_meetings SET invited='". $currentlyinvited ."', attending='" . $currentlyaccepted . "', declined='". $currentlydeclined ."' WHERE id=". $_POST['meetingID'];
         $result = mysqli_query($conn, $query);
 
+        //Output a success message
         echo '[{"status":"200","reason":"Success"}]';
 
+
+        //We want to die() so the user can't break anything else #Security
+        die();
     }
 
+    //This is used for users searching for people to invite to their meeting.
     if($action == 'usersearch'){
         if(!isset($_POST['searchterm'])){
             $data = '{"status":"400","info":"You must specify a search term"}';
@@ -202,14 +218,16 @@
         $query = "SELECT u.id, u.firstname, u.lastname, l.location_name FROM users u JOIN locations l ON u.location_id=l.id WHERE u.firstname LIKE '%". $searchTerm."%' OR u.lastname LIKE '%". $searchTerm."%' OR u.email LIKE '%". $searchTerm."%' OR CONCAT(u.firstname, ' ', u.lastname) LIKE '%". $searchTerm  ."%'";
         $results = mysqli_query($conn, $query);
 
-        $data = array();
-
+        //The users get returned in an array, one by one add them to the array from the MYSQLI resultset
         while($result = mysqli_fetch_array($results, MYSQLI_ASSOC)){
             array_push($data, json_encode($result, JSON_FORCE_OBJECT));
         }
 
+        //Output the list of users
         echo json_encode($data);
 
+        //Die so the user cant break anything else.
+        die();
     }
 
     if($action == 'CheckAvailabilityRooms'){
@@ -235,6 +253,9 @@
 
         //Return the output
         echo '[{"AvailableRooms":"' . addslashes(json_encode($AvailableRooms)) . '"}]';
+
+        //Die so the user cant break anything else.
+        die();
     }
 
     if($action == "MeetingRoomBook"){
