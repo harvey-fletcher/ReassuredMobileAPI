@@ -1,0 +1,8 @@
+####
+##
+## These CRON entries are for the Reassured Mobile App.
+##
+## This entry ensures that we have an up-to-date JOAN meeting room system token
+0 * * * * cd /var/www/html/ReassuredMobileApp/Scripts && php JoanToken.php Refresh
+##
+####
