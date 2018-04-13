@@ -240,8 +240,8 @@
 			done($data);
 		}
 
-		$JOANToken = json_decode(shell_exec($JoanRefreshToken), true)["access_token"];
-		$GetRoomAvailability = "curl -H 'Authorization: Bearer ".$JOANToken."' -X POST 'https://portal.getjoan.com/api/v1.0/get_room/' -d 'eventStart=".$_POST['eventStart']."&duration=" . $_POST['duration'] . "'";
+//		$JOANToken = json_decode(shell_exec($JoanRefreshToken), true)["access_token"];
+		$GetRoomAvailability = "curl -H 'Authorization: Bearer " . $JoanAuthToken . "' -X POST 'https://portal.getjoan.com/api/v1.0/get_room/' -d 'eventStart=".$_POST['eventStart']."&duration=" . $_POST['duration'] . "'";
 
 		$AvailableRooms = json_decode(shell_exec($GetRoomAvailability), true)["rooms"];
 
@@ -276,9 +276,9 @@
 		$end = (new DateTime($eventStart))->add(new DateInterval($interval))->format('Y-m-d H:i:s');
 		$source = $_POST['venue'];
 		$title = $_POST['name'];
-		
-		$JOANToken = json_decode(shell_exec($JoanRefreshToken), true)["access_token"];
-		$BookMeetingRoom = "curl -H 'Authorization: Bearer ".$JOANToken."' -X POST 'https://portal.getjoan.com/api/v1.0/events/book/' -d 'source=".$source."&start=".$eventStart."&end=".$end."&title=".$title."'";
+
+//		$JOANToken = json_decode(shell_exec($JoanRefreshToken), true)["access_token"];
+		$BookMeetingRoom = "curl -H 'Authorization: Bearer ". $JoanAuthToken ."' -X POST 'https://portal.getjoan.com/api/v1.0/events/book/' -d 'source=".$source."&start=".$eventStart."&end=".$end."&title=".$title."'";
 
 		$JOANRESPONSE = shell_exec($BookMeetingRoom);
 		$JOANRESPONSE = json_decode($JOANRESPONSE, true);
