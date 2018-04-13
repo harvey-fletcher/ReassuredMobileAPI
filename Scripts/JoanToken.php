@@ -13,7 +13,7 @@
     **/
 
     //We're going to need sitesettings file
-    include_once('api_settings.php');
+    include_once('../api_settings.php');
 
     //Since this is designed to be run from server side, we're going to call from argv parameter 1
     $argv[1]();
@@ -41,9 +41,6 @@
 
         //Update the token row in the database
         $result = mysqli_query($GLOBALS["conn"], "UPDATE joan_token SET token='" . $JoanToken . "' WHERE id=1");
-
-        //Was it a success or not?
-        echo mysqli_affected_rows($GLOBALS["conn"]);
     }
 
     //This function is only used in this controller so we have not put it in common functions
