@@ -226,7 +226,6 @@
 
 		echo json_encode($data);
 
-//		echo '[{"status":"200","reason":"Success"},{"status":"200","info":"notifications sent"}]';
 	}
 
 	if($action == 'CheckAvailabilityRooms'){
@@ -244,16 +243,8 @@
         $curl = curl_init();
 
         //We need to set some options up now
-        curl_setopt($curl, CURLOPT_URL, $GLOBALS["external_endpoints"]["joan"]["find"]);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, "eventStart=" . $_POST["eventStart"] . '&duration=' . $_POST["duration"]);
-        curl_setopt($curl, CURLOPT_POST, 1);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-                "Authorization: Bearer " . $JoanAuthToken,
-                "Cache-Control: no-cache",
-                "Content-Type: application/x-www-form-urlencoded",
-            )
-        );
+        $PostFields = "eventStart=" . $_POST["eventStart"] . '&duration=' . $_POST["duration"];
+        JoanSetOpts($curl, "find", $PostFields);
 
         //Execute the curl to get a list of available rooms
         $AvailableRooms = json_decode(curl_exec($curl), true)['rooms'];
@@ -291,21 +282,12 @@
         $source = $_POST['venue'];
         $title = $_POST['name'];
 
-
         //Initialise a curl
         $curl = curl_init();
 
         //We need to set some options up now
-        curl_setopt($curl, CURLOPT_URL, $GLOBALS["external_endpoints"]["joan"]["book"]);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, "source=" . $source . "&start=" . $eventStart . "&end=" . $end . "&title=" . $title);
-        curl_setopt($curl, CURLOPT_POST, 1);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-                "Authorization: Bearer " . $JoanAuthToken,
-                "Cache-Control: no-cache",
-                "Content-Type: application/x-www-form-urlencoded",
-            )
-        );
+        $PostFields = "source=" . $source . "&start=" . $eventStart . "&end=" . $end . "&title=" . $title;
+        JoanSetOpts($curl, "book", $PostFields);
 
         //Execute the curl to get a list of available rooms
         $JoanResponse = json_decode(curl_exec($curl), true);
@@ -320,6 +302,8 @@
 	$query = "INSERT INTO scheduled_meetings (`organizer_id`,`location`,`title`,`start_time`,`duration`,`invited`) VALUES ('".$user['id']."','".$_POST['venueName']."','".$_POST['name']."','". $_POST['start_time'] ."','".$_POST['duration']."','".json_encode($_POST['invitees'])."')";
 	mysqli_query($conn, $query);
 
+        //Done
+        die();
     }
 
 	//This function gets user IDs of those invited, gets their tokens, and sends them a meeting notification
@@ -337,7 +321,7 @@
 			}
 		}
 
-		 $CURLdata = '{"data":{"notification_type":"meeting","information":"' . $firstname . ' ' . $lastname . ' has invited you to their meeting."},"registration_ids":'. json_encode($tokens) .'}';
+                $CURLdata = '{"data":{"notification_type":"meeting","information":"' . $firstname . ' ' . $lastname . ' has invited you to their meeting."},"registration_ids":'. json_encode($tokens) .'}';
 
 		sendCURL($notifications_key, $CURLdata);
 	}
@@ -361,5 +345,21 @@
                 die();
         };
 
+    // This function is only used in this controller so we have not put it in common functions
+    // it sets up the required options for making a curl request into the JOAN api.
+    function JoanSetOpts($curl, $page, $postfields){
+        curl_setopt($curl, CURLOPT_URL, $GLOBALS["external_endpoints"]["joan"][$page]);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $postfields);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+                "Authorization: Bearer " . $GLOBALS['JoanAuthToken'],
+                "Cache-Control: no-cache",
+                "Content-Type: application/x-www-form-urlencoded",
+            )
+        );
+
+        return $curl;
+    }
 
 ?>
