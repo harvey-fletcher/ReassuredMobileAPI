@@ -240,60 +240,87 @@
 			done($data);
 		}
 
-//		$JOANToken = json_decode(shell_exec($JoanRefreshToken), true)["access_token"];
-		$GetRoomAvailability = "curl -H 'Authorization: Bearer " . $JoanAuthToken . "' -X POST 'https://portal.getjoan.com/api/v1.0/get_room/' -d 'eventStart=".$_POST['eventStart']."&duration=" . $_POST['duration'] . "'";
+        //Initialise a curl
+        $curl = curl_init();
 
-		$AvailableRooms = json_decode(shell_exec($GetRoomAvailability), true)["rooms"];
+        //We need to set some options up now
+        curl_setopt($curl, CURLOPT_URL, $GLOBALS["external_endpoints"]["joan"]["find"]);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, "eventStart=" . $_POST["eventStart"] . '&duration=' . $_POST["duration"]);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+                "Authorization: Bearer " . $JoanAuthToken,
+                "Cache-Control: no-cache",
+                "Content-Type: application/x-www-form-urlencoded",
+            )
+        );
 
-		echo '[{"AvailableRooms":"' . addslashes(json_encode($AvailableRooms)) . '"}]';
-	}
+        //Execute the curl to get a list of available rooms
+        $AvailableRooms = json_decode(curl_exec($curl), true)['rooms'];
 
-	if($action == "MeetingRoomBook"){
-		//Check we have all the data that we need to book out the meeting room
-		if(!isset($_POST['start_time'])){
-                        $data = '{"status":"400","info":"You must specify a start_time"}';
-                        done($data);
-                }
+        //Return the output
+        echo '[{"AvailableRooms":"' . addslashes(json_encode($AvailableRooms)) . '"}]';
+    }
 
-                if(!isset($_POST['duration'])){
-                        $data = '{"status":"400","info":"You must specify a duration"}';
-                        done($data);
-                }
+    if($action == "MeetingRoomBook"){
+        //Check we have all the data that we need to book out the meeting room
+        if(!isset($_POST['start_time'])){
+            $data = '{"status":"400","info":"You must specify a start_time"}';
+            done($data);
+        }
 
-		if(!isset($_POST['venue'])){
-                        $data = '{"status":"400","info":"You must specify a venue"}';
-                        done($data);
-                }
+        if(!isset($_POST['duration'])){
+            $data = '{"status":"400","info":"You must specify a duration"}';
+            done($data);
+        }
 
-		if(!isset($_POST['name'])){
-                        $data = '{"status":"400","info":"You must specify a name"}';
-                        done($data);
-                }
+	if(!isset($_POST['venue'])){
+            $data = '{"status":"400","info":"You must specify a venue"}';
+            done($data);
+        }
 
-		//Since we have all the required data, store them as short names
-		$eventStart = $_POST['start_time'];
-		$interval = "PT" . $_POST['duration']. "M";
-		$end = (new DateTime($eventStart))->add(new DateInterval($interval))->format('Y-m-d H:i:s');
-		$source = $_POST['venue'];
-		$title = $_POST['name'];
+        if(!isset($_POST['name'])){
+            $data = '{"status":"400","info":"You must specify a name"}';
+            done($data);
+        }
 
-//		$JOANToken = json_decode(shell_exec($JoanRefreshToken), true)["access_token"];
-		$BookMeetingRoom = "curl -H 'Authorization: Bearer ". $JoanAuthToken ."' -X POST 'https://portal.getjoan.com/api/v1.0/events/book/' -d 'source=".$source."&start=".$eventStart."&end=".$end."&title=".$title."'";
+        //Since we have all the required data, store them as short names
+        $eventStart = $_POST['start_time'];
+        $interval = "PT" . $_POST['duration']. "M";
+        $end = (new DateTime($eventStart))->add(new DateInterval($interval))->format('Y-m-d H:i:s');
+        $source = $_POST['venue'];
+        $title = $_POST['name'];
 
-		$JOANRESPONSE = shell_exec($BookMeetingRoom);
-		$JOANRESPONSE = json_decode($JOANRESPONSE, true);
-		$JOANRESPONSE = json_decode(json_encode($JOANRESPONSE), True);
 
-		//Display a success to say the meeting is booked.
-		echo '[{"status":"200"}]';
+        //Initialise a curl
+        $curl = curl_init();
 
-		//We want to invite the other people to the meeting
-		InviteAttendees($conn, $user['firstname'], $user['lastname'], $_POST['invitees'], $notifications_key);
+        //We need to set some options up now
+        curl_setopt($curl, CURLOPT_URL, $GLOBALS["external_endpoints"]["joan"]["book"]);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, "source=" . $source . "&start=" . $eventStart . "&end=" . $end . "&title=" . $title);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+                "Authorization: Bearer " . $JoanAuthToken,
+                "Cache-Control: no-cache",
+                "Content-Type: application/x-www-form-urlencoded",
+            )
+        );
 
-		//Insert the new meeting into our table
-		$query = "INSERT INTO scheduled_meetings (`organizer_id`,`location`,`title`,`start_time`,`duration`,`invited`) VALUES ('".$user['id']."','".$_POST['venueName']."','".$_POST['name']."','". $_POST['start_time'] ."','".$_POST['duration']."','".json_encode($_POST['invitees'])."')";
-		mysqli_query($conn, $query);
-	}
+        //Execute the curl to get a list of available rooms
+        $JoanResponse = json_decode(curl_exec($curl), true);
+
+        //Display a success to say the meeting is booked.
+	echo '[{"status":"200"}]';
+
+	//We want to invite the other people to the meeting
+	InviteAttendees($conn, $user['firstname'], $user['lastname'], $_POST['invitees'], $notifications_key);
+
+	//Insert the new meeting into our table
+	$query = "INSERT INTO scheduled_meetings (`organizer_id`,`location`,`title`,`start_time`,`duration`,`invited`) VALUES ('".$user['id']."','".$_POST['venueName']."','".$_POST['name']."','". $_POST['start_time'] ."','".$_POST['duration']."','".json_encode($_POST['invitees'])."')";
+	mysqli_query($conn, $query);
+
+    }
 
 	//This function gets user IDs of those invited, gets their tokens, and sends them a meeting notification
 	function InviteAttendees($conn, $firstname, $lastname, $invitees, $notifications_key){
@@ -333,5 +360,6 @@
                 echo json_encode($data);
                 die();
         };
-?>
 
+
+?>
