@@ -1,129 +1,119 @@
 <?php
-	include_once('api_settings.php');
+    //Include the API settings file with all the necessary keys
+    include_once('api_settings.php');
 
-	if(isset($_GET['email']) && isset($_GET['password'])){
-		$data = array();
-		
-		if(isset($_GET['login']) && isset($_GET['token'])){
-			$query = "SELECT * FROM users WHERE email='". $_GET['email'] ."' AND password='" . $_GET['password'] . "'";
-			$result = mysqli_query($conn, $query);
-			$data = mysqli_fetch_array($result, MYSQLI_ASSOC);
-		
-			if(mysqli_num_rows($result) != 1){
-				$data = array(
-					"status"=>"403", 
-					"code"=>"2", 
-					"reason"=>"Username or password incorrect"
-				);
-			} else {
-				//Everything is OK
-				$data["status"] = "200";
+    //Include the common functions file
+    include_once('common_functions.php');
 
-				//Insert a new token or refresh the existing one
-				$query = "SELECT * FROM application_tokens WHERE user_id='". $data['id']  ."'";
+    //If this page was accessed via a get request, store the variables as post
+    if($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $_POST = json_encode($_GET);
+    }
 
-				//Delete any rows with matching tokens so that notifications are only displayed on the currently signed in user.
-				$query = "DELETE FROM application_tokens WHERE application_token='" . $_GET['token']  . "' OR user_id = " . $data['id'];
-				$result = mysqli_query($conn, $query);
+    //Decode the input into a useable array
+    $GLOBALS['_POST'] = json_decode($_POST, true);
 
-				//Insert the new token
-				$query = "INSERT INTO application_tokens (`user_id`,`application_token`) VALUES ('". $data['id']  ."','". $_GET['token']  ."')";
-				$result = mysqli_query($conn, $query);
-			}
-		} else if(isset($_GET['create'])){
-			if(isset($_GET['firstname']) && isset($_GET['lastname']) && isset($_GET['team_id']) && isset($_GET['location_id'])){
-				//Store the variables as shortnames for ease
-				$email = $_GET['email'];
-				$password = $_GET['password'];
-				$firstname = $_GET['firstname'];
-				$lastname = $_GET['lastname'];
-				$team = $_GET['team_id'];
-				$location = $_GET['location_id'];
+    //If we are doing a login, execute the common auth function
+    if(isset($GLOBALS['_POST']['login'])){
+        //Attempt to authenticate the user
+        auth($GLOBALS['_POST']['email'], $GLOBALS['_POST']['password']);
 
-				$valid = array(1,"Everything OK");
+        //Update the stored token for that user.
+        updateToken();
 
-				//Check the email is for reassured
-				if(substr($email, -16) != '@reassured.co.uk'){
-					$valid = array(0, "Please use your reassured email address");
-				}
+        //Return the user details
+        echo json_encode($GLOBALS['USER']);
 
-				if($firstname == ""){
-					$valid = array(0, "Firstname cant be blank");
-				}
+        //Die so the user can't damage anything
+        die();
+    }
 
-				if($lastname == ""){
-					$valid = array(0, "Lastname cant be blank");
-				}
+    //If the creation variable is set, we want to validate and create that new user.
+    if(isset($GLOBALS['_POST']['create']))CheckUserCreationValidation();
 
-				if($password == ""){
-					$valid = array(0, "Password cant be null");
-				}
+    function updateToken(){
+       //Delete any rows with matching tokens so that notifications are only displayed on the currently signed in user.
+       $query = "DELETE FROM application_tokens WHERE application_token='" . $GLOBALS['USER']['id']  . "' OR user_id = " . $GLOBALS['USER']['id'];
+       $result = mysqli_query($GLOBALS['conn'], $query);
 
-				if($team == ""){
-					$valid = array(0, "You must supply a team ID");
-				}
+       //Insert the new token
+       $query = "INSERT INTO application_tokens (`user_id`,`application_token`) VALUES ('". $GLOBALS['USER']['id']  ."','". $GLOBALS['_POST']['token']  ."')";
+       $result = mysqli_query($GLOBALS['conn'], $query);
+    }
 
-				if($location == ""){
-					$location = 1;
-				}
+    function CheckUserCreationValidation(){
+        //The fields we need are firstname, lastname, team_id and location_id, everything else is optional
+        if(!isset($GLOBALS['_POST']['firstname']) || !isset($GLOBALS['_POST']['lastname'])  || !isset($GLOBALS['_POST']['team_id']) || !isset($GLOBALS['_POST']['location_id'])){
+            stdout(array("status" => "403", "error" => "You have not specified the correct number of fields."));
+        }
 
-				//If everything is OK insert the user
-				if($valid[0] == 1){
-					//Check if that email is already used
-					$user_exists = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM users WHERE email='" . $email . "'"));
+        //Assign all the fields with a short name
+        $email = $GLOBALS['_POST']['email'];
+        $password = $GLOBALS['_POST']['password'];
+        $firstname = $GLOBALS['_POST']['firstname'];
+        $lastname = $GLOBALS['_POST']['lastname'];
+        $team = $GLOBALS['_POST']['team_id'];
+        $location = $GLOBALS['_POST']['location_id'];
 
-					//Error if there is 1 or more rows
-					if($user_exists == 0){
-						//The query to insert users
-						$insert_user = "INSERT INTO users (`email`,`password`,`firstname`,`lastname`,`team_id`,`location_id`) VALUES ('". $email  ."','". $password  ."','". $firstname  ."','". $lastname  ."','". $team ."','". $location  ."')";
+        //By default, everything is OK
+        $valid = array(1, "Everything OK");
 
-						//Execute that query
-						$run_query = mysqli_query($conn, $insert_user);
-						
-						//How many rows were affected?
-						$success = mysqli_affected_rows($conn);
-						
-						//Was it successful?
-						if($success == 1){
-							$data = array(
-								"status" => "200",
-								"reason" => "New user created."
-							);
-						} else {
-							$data = array(
-								"status" => "500",
-								"reason" => "Something went wrong. Please try again"
-							);
-						}
-					} else {
-						$data = array(
-                	                                "status" => "500",
-        	                                        "reason" => "That email address is already in use"
-	                                        );
-					}
-				} else {
-					$data = array(
-						"status" => "500",
-						"reason" => $valid[1]
-					);
-				}
-			} else {
-				$data = array(
-					"status" => "500",
-					"reason" => "User creation failed because you did not specify enough values. Please consult the API docs"
-				);
-			};
-		} else if(isset($_GET['login']) && !isset($_GET['token'])){
-			$data = array("status"=>"403", "code"=>"1", "reason"=>"Please provide a username and password and an application instance token, which can be null.");
-		} else {
-			$data = array(
-				"status" => "500",
-				"reason" => "You have not specified an endpoint. Endpoints are login, create. Please consult the API docs for the users API"
-			);
-		}
-	} else {
-		$data = array("status"=>"403", "code"=>"1", "reason"=>"Please provide a username and password and an application instance token, which can be null.");
-	}
+        //Check the email address provided belongs to a reassured domain.
+        if(substr($email, -16) != '@reassured.co.uk'){
+            $valid = array(0, "Please use your reassured email address");
+        }
 
-	echo json_encode($data);
+        //Firstname cannot be blank
+        if($firstname == ""){
+            $valid = array(0, "Firstname cant be blank");
+        }
+
+        //Lastname cannot be blank
+        if($lastname == ""){
+            $valid = array(0, "Lastname cant be blank");
+        }
+
+        //Password can't be blank
+        if($password = ""){
+            $valid = array(0, "Password can't be null");
+        }
+
+        //Team ID cannot be blank
+        if($team == ""){
+            $valid = array(0, "You must supply a team ID");
+        }
+
+        //If the location is blank, it should default to 1.
+        if($location == ""){
+            $location = 1;
+        }
+
+        //If everything is valid, proceed to the next step, else, error
+        if($valid[0] == 0){
+            stdout(array("status" => "400", "reason" => $valid[1]));
+        } else {
+            //Check if that email is already used
+            $user_exists = mysqli_num_rows(mysqli_query($GLOBALS['conn'], "SELECT * FROM users WHERE email='" . $email . "'"));
+
+            //Error if there is 1 or more rows
+            if($user_exists == 0){
+                //The query to insert users
+                $insert_user = "INSERT INTO users(`email`, `password`, `firstname`, `lastname`, `team_id`, `location_id`) VALUES ('" . $email . "','" . $password . "','" . $firstname . "','" . $lastname . "','". $team ."','". $location ."')";
+
+                //Execute that query
+                $run_query = mysqli_query($GLOBALS['conn'], $insert_user);
+
+                //How many rows were affected?
+                $success = mysqli_affected_rows($GLOBALS['conn']);
+
+                //Was it successful?
+                if($success == 1){
+                    stdout(array("status" => "200", "reason" => "New user created"));
+                } else {
+                    stdout(array("status" => "500", "reason" => "Something went wrong, please try again"));
+                }
+            }
+        }
+    }
+
 ?>

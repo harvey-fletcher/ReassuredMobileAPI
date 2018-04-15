@@ -13,11 +13,14 @@
 
         //We only want to success if there is a distinct match
         if(mysqli_num_rows($result) != 1){
-            stdout(array("error" => "username or password incorrect"));
+            stdout(array("error" => "username or password incorrect", "status" => "403"));
         }
 
         //Fetch the user details and store them as a global
         $GLOBALS['USER'] = mysqli_fetch_array($result, MYSQLI_ASSOC);
+
+        //Say that the user authentication is OK
+        $GLOBALS['USER']['status'] = 200;
     }
 
     //This function prints and then dies
