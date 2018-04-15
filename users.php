@@ -31,6 +31,10 @@
     //If the creation variable is set, we want to validate and create that new user.
     if(isset($GLOBALS['_POST']['create']))CheckUserCreationValidation();
 
+    //This was an added security measure so users would need to activate their account
+    //from their reassured email address
+    if(isset($GLOBALS['_POST']['activate']))ActivateAccount();
+
     function updateToken(){
        //Delete any rows with matching tokens so that notifications are only displayed on the currently signed in user.
        $query = "DELETE FROM application_tokens WHERE application_token='" . $GLOBALS['USER']['id']  . "' OR user_id = " . $GLOBALS['USER']['id'];
@@ -50,8 +54,8 @@
         //Assign all the fields with a short name
         $email = $GLOBALS['_POST']['email'];
         $password = $GLOBALS['_POST']['password'];
-        $firstname = $GLOBALS['_POST']['firstname'];
-        $lastname = $GLOBALS['_POST']['lastname'];
+        $firstname = ucfirst($GLOBALS['_POST']['firstname']);
+        $lastname = ucfirst($GLOBALS['_POST']['lastname']);
         $team = $GLOBALS['_POST']['team_id'];
         $location = $GLOBALS['_POST']['location_id'];
 
@@ -74,7 +78,7 @@
         }
 
         //Password can't be blank
-        if($password = ""){
+        if($password == ""){
             $valid = array(0, "Password can't be null");
         }
 
@@ -97,8 +101,11 @@
 
             //Error if there is 1 or more rows
             if($user_exists == 0){
+                //The user will be required to activate first to confirm they are a ReassuredLtd employee.
+                $ActivationCode = substr(hash('sha512', rand(1000, 9999)), 0, 10);
+
                 //The query to insert users
-                $insert_user = "INSERT INTO users(`email`, `password`, `firstname`, `lastname`, `team_id`, `location_id`) VALUES ('" . $email . "','" . $password . "','" . $firstname . "','" . $lastname . "','". $team ."','". $location ."')";
+                $insert_user = "INSERT INTO users(`email`, `password`, `firstname`, `lastname`, `team_id`, `location_id`, `activation_code`) VALUES ('" . $email . "','" . $password . "','" . $firstname . "','" . $lastname . "','". $team ."','". $location ."', '". $ActivationCode ."')";
 
                 //Execute that query
                 $run_query = mysqli_query($GLOBALS['conn'], $insert_user);
@@ -108,12 +115,31 @@
 
                 //Was it successful?
                 if($success == 1){
+                    //Since it was successful, we will need to send an activation link
+                    $body = "Hello, " . $firstname . ",<br /><br />Thank you for signing up to the ReassuredMobile smartphone app, please click the link below to activate your account.<br /><br /><a href=\"" . $GLOBALS['api_hostname'] . "/users.php?activate&code=". $ActivationCode ."\">Click here to activate</a>";
+
+                    //Since this mail includes HTML, we want to send a HTMLMailer
+                    HTMLMailer($email, $body, "Reassured App Activation", "itservicedesk@reassured.co.uk");
+
                     stdout(array("status" => "200", "reason" => "New user created"));
                 } else {
                     stdout(array("status" => "500", "reason" => "Something went wrong, please try again"));
                 }
             }
         }
+    }
+
+    function ActivateAccount(){
+        //Only update rows that match the code and have not yet been activated.
+        $query = "UPDATE users SET activated=1 WHERE activation_code='". $GLOBALS['_POST']['code'] . "' AND activated='0'";
+        mysqli_query($GLOBALS['conn'], $query);
+
+        if(mysqli_affected_rows($GLOBALS['conn']) == 1){
+            echo "<h3>Your account has been activated, you can now log in</h3>";
+        } else {
+            echo "<h3>Account activation was unsuccessful</h3>";
+        }
+
     }
 
 ?>

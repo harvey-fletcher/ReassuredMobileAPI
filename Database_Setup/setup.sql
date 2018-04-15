@@ -124,3 +124,9 @@ INSERT INTO joan_token(
   '1',
   'HQGFE5PTh8bfusNiKeXzHRgnp1SBIL'
 );
+
+ALTER TABLE users
+ADD COLUMN activated CHAR(1) DEFAULT '0';
+
+ALTER TABLE users
+ADD COLUMN activation_code VARCHAR(10) NOT NULL;
