@@ -95,8 +95,13 @@
                 //There is a chance that MYSQL put the id as a string, change it to an int
                 $message['user_id'] = (int)$message['to_id'];
 
+                //Find the user details of the user that sent the message
+                $query = "SELECT * FROM users WHERE id=" . $message['to_id'];
+                $result = mysqli_query($GLOBALS['conn'], $query);
+                $UD = mysqli_fetch_array($result, MYSQLI_ASSOC);
+
                 //Assemble the full name of the user that sent the message
-                $message['user_name'] = $GLOBALS['USER']['firstname'] . ' ' . $GLOBALS['USER']['lastname'];
+                $message['user_name'] = $UD['firstname'] . ' ' . $UD['lastname'];
 
                 //The message was outward. (client side uses this to chosse alignment and colour)
                 $message['direction'] = 1;
