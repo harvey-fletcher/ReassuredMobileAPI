@@ -5,9 +5,8 @@
     //Include the common functions file
     include_once('common_functions.php');
 
-    //The output
-    $data = array();
-
+    //This block of code gets executed for pagination on the calendar events list.
+    //It affects the building of the query.
     if(isset($_GET['from_result'])){
         $onwards_of = $_GET['from_result'];
     } else {
@@ -19,11 +18,12 @@
             $query = "SELECT c.id, u.firstname, u.lastname, c.event_start, c.event_location, c.event_name, c.event_information FROM company_calendar c JOIN users u ON c.event_organiser=u.id WHERE c.event_start BETWEEN '". $_GET['start']  ." 00:00:01' AND '". $_GET['end']  ." 23:59:59' ORDER BY event_start ASC LIMIT ". $onwards_of .", 6";
 
             if($result = mysqli_query($conn, $query)){
+                //We need somewhere to store all the data we are outputting
+                $data = array();
+
                 while($row = mysqli_fetch_array($result, MYSQLI_ASSOC)){
                     $row['event_organiser'] = $row['firstname'] . " " . $row['lastname'];
-                    unset($row['firstname']);
-                    unset($row['lastname']);
-                    array_push($data, json_encode($row, JSON_FORCE_OBJECT));
+                    array_push($data, $row);
                 }
 
                 //Output the data using the function in common_functions.php
@@ -35,7 +35,7 @@
         } else {
             stdout(array('Error', 'You have not specified a start and end date for the date range.'));
         }
-    } else if($_GET['add']){
+    } else if(isset($_GET['add'])){
         if(isset($_GET['email']) && isset($_GET['password'])){
             //Auth the user here.
             auth($_GET['email'], $_GET['password']);
@@ -74,7 +74,7 @@
                 stdout(array('status' => '403', 'reason' => 'Your user group cannot perform this action'));
             }
         }
-    } else if($_GET['delete']){
+    } else if(isset($_GET['delete'])){
         if(isset($_GET['email']) && isset($_GET['password'])){
             //Auth the user using common_functions.php auth()
             auth($_GET['email'], $_GET['password']);
