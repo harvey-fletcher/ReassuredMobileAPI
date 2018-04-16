@@ -25,11 +25,15 @@
         auth($_POST['email'], $_POST['password']);
     }
 
-    //Assign the action a short name so it is easier to write in the following code
-    $action = $_POST['action'];
+    //Check the requested function exists, if yes, do it, else error.
+    if(function_exists($_POST['action'])){
+        $_POST['action']();
+    } else {
+        stdout(array("status" => "400", "info" => "function doesn't exist"));
+    }
 
     //This is the code block for sending a new message out over FCM to a specific user
-    if($action == 'send'){
+    function send(){
         //We are going to insert the new message into the database, assign all the variables a shortname
         $from_id = $GLOBALS['USER']['id'];
         $to_id = $_POST['to_user_id'];
@@ -37,10 +41,10 @@
         $from_name = $GLOBALS['USER']['firstname'] . ' ' . $GLOBALS['USER']['lastname'];
 
         //Build a query to insert into the `user_messages` table
-        $query = "INSERT INTO `user_messages` (`from_user_id`,`to_user_id`,`message_body`) VALUES ('". $from_id ."','". $to_id ."','". mysqli_escape_string($conn, $body) ."')";
+        $query = "INSERT INTO `user_messages` (`from_user_id`,`to_user_id`,`message_body`) VALUES ('". $from_id ."','". $to_id ."','". mysqli_escape_string($GLOBALS['conn'], $body) ."')";
 
         //Execute the query to insert the new message
-        mysqli_query($conn, $query);
+        mysqli_query($GLOBALS['conn'], $query);
 
         //We need to build the data that will be sent in the messae
         $NotificationData = array(
@@ -60,72 +64,75 @@
         stdout(array(array("status" => "200", "info" => "The message has been sent.")));
     }
 
-	if($action == 'refresh'){
-		$query = "SELECT to_user_id as to_id, from_user_id as from_id, sent_time as sent, message_body as message FROM `user_messages` WHERE to_user_id=" . $GLOBALS['USER']['id'] . " OR from_user_id=". $GLOBALS['USER']['id'];
-		$messages = mysqli_query($conn, $query);
+    function refresh(){
+        //Build a query to select ALL the messages that user has sent or receieved.
+        $query = "SELECT to_user_id as to_id, from_user_id as from_id, sent_time as sent, message_body as message FROM `user_messages` WHERE to_user_id=" . $GLOBALS['USER']['id'] . " OR from_user_id=". $GLOBALS['USER']['id'];
+        $messages = mysqli_query($GLOBALS['conn'], $query);
 
-		//We want to send all these messages back to the requesting user's device
-       	        $query = "SELECT * FROM application_tokens WHERE user_id=" . $GLOBALS['USER']['id'];
-                $tokens[] = mysqli_fetch_array(mysqli_query($conn, $query), MYSQLI_ASSOC)['application_token'];
+        //Loop through all the messages to build the array of conversations
+        $user_conversations_with = array();
+        $conversations_array = array();
 
-		//Loop through all the messages to build the array of conversations
-		$user_conversations_with = array();
-		$conversations_array = array();
+        //For every message, structure it with additional detail such as firstname and lastname
+        while($message = mysqli_fetch_array($messages, MYSQLI_ASSOC)){
+            //If the requesting user did not send the message, we will need to execute this
+            if($message['from_id'] != $GLOBALS['USER']['id']){
+                //There is a chance that MYSQL put the id as a string, change it to an int
+                $message['user_id'] = (int)$message['from_id'];
 
-		$globaluser = '';
-		$globalid = 0;
+                //Find the user details of the user that sent the message
+                $query = "SELECT * FROM users WHERE id=" . $message['from_id'];
+                $result = mysqli_query($GLOBALS['conn'], $query);
+                $UD = mysqli_fetch_array($result, MYSQLI_ASSOC);
 
-		while($message = mysqli_fetch_array($messages, MYSQLI_ASSOC)){
-			if($message['from_id'] != $GLOBALS['USER']['id']){
-				$message['user_id'] = (int)$message['from_id'];
+                //Build up the full name of the user that sent the message
+                $message['user_name'] = $UD['firstname'] . ' ' . $UD['lastname'];
 
-                                $query = "SELECT * FROM users WHERE id=" . $message['from_id'];
-                                $result = mysqli_query($conn, $query);
-                                $UD = mysqli_fetch_array($result, MYSQLI_ASSOC);
+                //The message was inbound (client side uses this to chosse alignment and colour)
+                $message['direction'] = 0;
+            } else {
+                //This block is when the requesting user DID send the message
+                //There is a chance that MYSQL put the id as a string, change it to an int
+                $message['user_id'] = (int)$message['to_id'];
 
-                                $message['user_name'] = $UD['firstname'] . ' ' . $UD['lastname'];
+                //Assemble the full name of the user that sent the message
+                $message['user_name'] = $GLOBALS['USER']['firstname'] . ' ' . $GLOBALS['USER']['lastname'];
 
-				$message['direction'] = 0;
-			} else {
-				$message['user_id'] = (int)$message['to_id'];
+                //The message was outward. (client side uses this to chosse alignment and colour)
+                $message['direction'] = 1;
+             }
 
-				$query = "SELECT * FROM users WHERE id=" . $message['to_id'];
-				$result = mysqli_query($conn, $query);
-				$UD = mysqli_fetch_array($result, MYSQLI_ASSOC);
+             //This stops a notification being generated on the client
+             $message['notification_id'] = 0;
 
-				$message['user_name'] = $UD['firstname'] . ' ' . $UD['lastname'];
+             //Put the timestamp in the right format
+             $message['sent'] = date('H:i', strtotime($message['sent']));
 
-				$message['direction'] = 1;
-			}
+             //Client side has arrays so that new messages can be added at specific
+             //positions and re ordered to most recent. Ensure that we are sending the
+             //messages in the correct order so that they associate to the right conversation.
+             if(!in_array((int)$message['user_id'], $user_conversations_with)){
+                 array_push($user_conversations_with, (int)$message['user_id']);
+                 array_push($conversations_array, array($message));
+             } else {
+                 $position = array_search($message['user_id'], $user_conversations_with);
+                 array_push($conversations_array[$position], $message);
+             }
+        }
 
-                        //This stops a notification being generated on the client
-                        $message['notification_id'] = 0;
+        //Build the message array
+        $NotificationData = array(
+                "data" => array(
+       	                "notification_type" => "refreshMessages",
+                        "user_conversations_with" => $user_conversations_with,
+               	      	"conversations_array" => $conversations_array,
+       	       	    ),
+            );
 
-			//Put the timestamp in the right format
-			$message['sent'] = date('H:i', strtotime($message['sent']));
+        //Broadcast the message
+        sendFCM(array(3, $GLOBALS['USER']['id']), $NotificationData);
 
-			if(!in_array((int)$message['user_id'], $user_conversations_with)){
-				array_push($user_conversations_with, (int)$message['user_id']);
-				array_push($conversations_array, array($message));
-			} else {
-				$position = array_search($message['user_id'], $user_conversations_with);
-				array_push($conversations_array[$position], $message);
-			}
-		}
-
-		//Build the message array
-		$NotificationData = array(
-                        "data" => array(
-       	                        "notification_type" => "refreshMessages",
-				"user_conversations_with" => $user_conversations_with,
-               	      	        "conversations_array" => $conversations_array,
-       	       	        ),
-                );
-
-               	//Broadcast the message
-                sendFCM(array(3, $GLOBALS['USER']['id']), $NotificationData);
-
-		//Echo success
-                echo '[{"status":"200","info":"The message has been sent."}]';
-	} 
+	//Echo success
+        stdout(array(array("status" => "200", "info" => "The message has been sent.")));
+    }
 ?>
