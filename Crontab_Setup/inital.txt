@@ -5,4 +5,7 @@
 ## This entry ensures that we have an up-to-date JOAN meeting room system token
 0 * * * * cd /var/www/html/ReassuredMobileApp/Scripts && php JoanToken.php Refresh
 ##
+## This entry runs at 6am every weekday to alert the user of any calendar events happening today
+0 6 * * 1-5 cd /var/www/html/ReassuredMobileApp/Scripts && php CheckCalendarEventsToday.php
+##
 ####
