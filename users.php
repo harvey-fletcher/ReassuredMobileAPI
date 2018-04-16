@@ -121,7 +121,7 @@
                     //Since this mail includes HTML, we want to send a HTMLMailer
                     HTMLMailer($email, $body, "Reassured App Activation", "itservicedesk@reassured.co.uk");
 
-                    stdout(array("status" => "200", "reason" => "New user created"));
+                    stdout(array("status" => "200", "reason" => "New user created.\nPlease check your emails for the activation email."));
                 } else {
                     stdout(array("status" => "500", "reason" => "Something went wrong, please try again"));
                 }

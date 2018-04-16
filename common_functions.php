@@ -91,3 +91,16 @@
         echo json_encode($data);
         die();
     }
+
+    //This function is used to authenticate the Reassured CRM
+    function CRMAuth(){
+        //Check a token was provided, die if not
+        if(!isset($GLOBALS['Parameters']['token'])){
+            stdout(array("error" => 403, "info" => "Please tell me who you are..."));
+        }
+
+        //Does the token match what should be here
+        if($GLOBALS['Parameters']['token'] != $GLOBALS['external_keys']['crm']){
+            stdout(array("error" => 403, "info" => "Wait! You're not the CRM! Your token is wrong!"));
+        }
+    }
