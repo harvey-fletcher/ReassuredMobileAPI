@@ -130,16 +130,20 @@
     }
 
     function ActivateAccount(){
-        //Only update rows that match the code and have not yet been activated.
-        $query = "UPDATE users SET activated=1 WHERE activation_code='". $GLOBALS['_POST']['code'] . "' AND activated='0'";
-        mysqli_query($GLOBALS['conn'], $query);
+        //Only attempt account activation if a code was provided, otherwise, fail straight away
+        if(isset($_GET['code'])){
+            //Only update rows that match the code and have not yet been activated.
+            $query = "UPDATE users SET activated=1 WHERE activation_code='". $GLOBALS['_POST']['code'] . "' AND activated='0'";
+            mysqli_query($GLOBALS['conn'], $query);
 
-        if(mysqli_affected_rows($GLOBALS['conn']) == 1){
-            echo "<h3>Your account has been activated, you can now log in</h3>";
+            if(mysqli_affected_rows($GLOBALS['conn']) == 1){
+                include_once('Pages/activation_success.html');
+            } else {
+                include_once('Pages/activation_failure.html');
+            }
         } else {
-            echo "<h3>Account activation was unsuccessful</h3>";
+            include_once('Pages/activation_failure.html');
         }
-
     }
 
 ?>
