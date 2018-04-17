@@ -40,7 +40,41 @@
     //If the user wants to update their password
     if(isset($GLOBALS['_POST']['changePass']))ChangePassword();
 
+    //If the user wants to change their name
+    if(isset($GLOBALS['_POST']['changeName']))ChangeName();
+
+    function ChangeName(){
+        //Authenticate the user.
+        auth($GLOBALS['_POST']['email'], $GLOBALS['_POST']['password']);
+
+        //We don't want to update the name straight away, we want to ask their team leader first
+        //Get the email address of the team leader
+        $query = "SELECT * FROM teams t JOIN users u on t.team_leader_user_id=u.id WHERE t.id=" . $GLOBALS['USER']['team_id'];
+        $team_leader = mysqli_fetch_array(mysqli_query($GLOBALS['conn'], $query), MYSQLI_ASSOC);
+
+        //This is the query that will be used to update the record when approved
+        $on_approval_query = "UPDATE users SET firstname='" . ucfirst($GLOBALS['_POST']['firstname']) . "', lastname='" . ucfirst($GLOBALS['_POST']['surname']) . "' WHERE id=" . $GLOBALS['USER']['id'];
+
+        //Generate a passkey for the pending action
+        $PassKey = substr(hash('sha512', rand(1000, 9999)), 0, 10);
+
+        //Insert the pending action
+        $query = "INSERT INTO pending_actions (`action`,`passkey`,`affects_user_id`) VALUES ('" . mysqli_escape_string($GLOBALS['conn'], $on_approval_query) . "', '". $PassKey ."', " . $GLOBALS['USER']['id'] . ")";
+        mysqli_query($GLOBALS['conn'], $query);
+
+        //Build a HTML email to send to the team leader
+        include_once('Pages/UserChangeNameRequestTemplate.php');
+
+        //Mail the team leader
+        HTMLMailer($team_leader['email'], $MailBody, 'Reassured App Name Change Request', 'itservicedesk@reassured.co.uk');
+
+        stdout(array("success" => "An email was sent to your team leader, " . $team_leader['firstname'] . " " . $team_leader['lastname'] . ", they must approve the change."));
+    }
+
     function ChangePassword(){
+        //Authenticate the user.
+        auth($GLOBALS['_POST']['email'], $GLOBALS['_POST']['password']);
+
         //This is the password update query
         $query = "UPDATE users SET password='". $GLOBALS['_POST']['newPassword'] ."' WHERE email='". $GLOBALS['_POST']['email'] . "' AND password='". $GLOBALS['_POST']['password'] ."'";
         mysqli_query($GLOBALS['conn'], $query);
