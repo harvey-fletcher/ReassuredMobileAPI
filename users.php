@@ -8,6 +8,8 @@
     //If this page was accessed via a get request, store the variables as post
     if($_SERVER['REQUEST_METHOD'] !== 'POST') {
         $_POST = json_encode($_GET);
+    } else {
+        $_POST = trim(urldecode(file_get_contents('php://input')), '=');
     }
 
     //Decode the input into a useable array
@@ -34,6 +36,22 @@
     //This was an added security measure so users would need to activate their account
     //from their reassured email address
     if(isset($GLOBALS['_POST']['activate']))ActivateAccount();
+
+    //If the user wants to update their password
+    if(isset($GLOBALS['_POST']['changePass']))ChangePassword();
+
+    function ChangePassword(){
+        //This is the password update query
+        $query = "UPDATE users SET password='". $GLOBALS['_POST']['newPassword'] ."' WHERE email='". $GLOBALS['_POST']['email'] . "' AND password='". $GLOBALS['_POST']['password'] ."'";
+        mysqli_query($GLOBALS['conn'], $query);
+
+        //If there was success, say it.
+        if(mysqli_affected_rows($GLOBALS['conn']) == 1){
+            stdout(array("success" => "Password has been updated"));
+        } else {
+            stdout(array("error" => mysqli_error($GLOBALS['conn'])));
+        }
+    }
 
     function updateToken(){
        //Delete any rows with matching tokens so that notifications are only displayed on the currently signed in user.
