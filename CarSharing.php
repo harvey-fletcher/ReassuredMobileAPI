@@ -1,98 +1,82 @@
 <?php
 
-	//First of all, we need to include all API settings
-	include_once('api_settings.php');
+    //First of all, we need to include all API settings
+    include_once('api_settings.php');
 
-	//Change the JSON data that we are send to a useable array
-	$_POST = json_decode($_POST['data'], True);
+    //Include common functions
+    include_once('common_functions.php');
 
-	//Now we need to check that the user has provided all the necessary credentials to access this service
-	if( !isset($_POST['email']) || !isset($_POST['password']) ){
-		echo '[{"status":"403","info":"You must provide a username and password"}]';
-	} else {
-		//Check that the user exists in the database
-		$query = "SELECT * FROM users WHERE email='". $_POST['email'] ."' AND password='". $_POST['password'] ."'";
-		$result = mysqli_query($conn, $query);
-		
-		//The user must match one record in the DB
-		if(mysqli_num_rows($result) != 1){
-			echo '[{"status":"403","info":"You do not have permission to access this."}]';
-			die();
-		} else {
-			$user = mysqli_fetch_array($result, MYSQLI_ASSOC);
-		}
-	}
+    //Take input from the correct header, decode it
+    $_POST = json_decode(trim(urldecode(file_get_contents('php://input')), "=data"), true);
 
-	//This will send a notification to all registered devices, and request their locations
-	if($_POST['action'] == "RequestAll"){
-		//An array of FCM tokens
-		$tokens = array();
-		//The query
-		$query = "SELECT application_token FROM application_tokens";
-		
-		//Execute
-		$result = mysqli_query($conn, $query);
+file_put_contents(__DIR__.'/data.log', json_encode($_POST));
 
-		//Build the array of tokens
-		while($usertoken = mysqli_fetch_array($result, MYSQLI_ASSOC)){
-			array_push($tokens, $usertoken['application_token']);
-		}
+    //Now we need to check that the user has provided all the necessary credentials to access this service
+    if( !isset($_POST['email']) || !isset($_POST['password']) ){
+        echo '[{"status":"403","info":"You must provide a username and password"}]';
+    } else {
+        //Auth using the function in common_functions.php
+        auth($_POST['email'], $_POST['password']);
+        $user = $GLOBALS['USER'];
+    }
 
-		//Convert the array to a JSONArray
-		$tokens = json_encode($tokens);
+    //This will send a notification to all registered devices, and request their locations
+    if($_POST['action'] == "RequestAll"){
+        //Build the request notification
+        $Notification = array(
+                "data" => array(
+                        "notification_type" => "locationrequest",
+                        "information" => "The server has requested the location of this device",
+                    ),
+            );
 
-		//Build the notification we are going to send
-		$CURLdata = '{"data":{"notification_type":"locationrequest","information":"The server has requested that the location of this device is sent to the google location service."},"registration_ids":'. $tokens  .'}';
+        //Send the notification using the common_functions.php
+        sendFCM(array(1), $Notification);
+    }
 
-		//Send the notification
-		sendCURL($notifications_key, $CURLdata);
+    //This code block finds all users that are within a five mile radius of the requesting user's current location.
+    if($_POST['action'] == "FindNearMe"){
+        if(!isset($_POST['latitude']) || !isset($_POST['longitude'])){
+            stdout(array(array("status" => 400, "info" => "You must supply latitude and longitude values")));
+        }
 
-		die();
-	}
+        //This query will find all users within a five mile radius of the supplied location
+        $query = "SELECT u.id, u.firstname, u.lastname,	u.last_known_lat, u.last_known_long, ( ACOS( COS( RADIANS( ".$_POST['latitude']." ) ) * COS ( RADIANS (u.last_known_lat) ) * COS ( RADIANS (u.last_known_long) - RADIANS( ".$_POST['longitude']." ) ) + SIN ( RADIANS( ".$_POST['latitude']." ) ) * SIN ( RADIANS( u.last_known_lat ) )	) * 3959 ) AS distance FROM users u WHERE u.id!=". $user['id'] ." AND display_location=1 ORDER BY distance ASC LIMIT 100";
+        $result = mysqli_query($conn, $query);
 
-	//This code block finds all users that are within a five mile radius of the requesting user's current location.
-	if($_POST['action'] == "FindNearMe"){
-		if(!isset($_POST['latitude']) || !isset($_POST['longitude'])){
-			echo '[{"status":"400","info":"You must supply latitude and longitude values"}]';
-			die();
-		}
+        //Initialise the data array so that we can add items into it.
+        $data = array();
 
-		//This query will find all users within a five mile radius of the supplied location
-		$query = "SELECT u.id, u.firstname, u.lastname,	u.last_known_lat, u.last_known_long, ( ACOS( COS( RADIANS( ".$_POST['latitude']." ) ) * COS ( RADIANS (u.last_known_lat) ) * COS ( RADIANS (u.last_known_long) - RADIANS( ".$_POST['longitude']." ) ) + SIN ( RADIANS( ".$_POST['latitude']." ) ) * SIN ( RADIANS( u.last_known_lat ) )	) * 3959 ) AS distance FROM users u WHERE u.id!=". $user['id'] ." AND display_location=1 ORDER BY distance ASC LIMIT 100";
-		$result = mysqli_query($conn, $query);
+        //For each user within five miles, add them to the dataset
+        while($user_details = mysqli_fetch_array($result, MYSQLI_ASSOC)){
+            if($user_details['distance'] < 5){
+                unset($user_details['distance']);
+                unset($user_details['last_known_lat']);
+                unset($user_details['last_known_long']);
+                array_push($data, $user_details);
+            }
+        }
 
-		//Initialise the data array so that we can add items into it.
-		$data = array();
+    //Return a result
+//    stdout(array(array("results" => $data, "user_id" => $user['id'])));
+        echo '[{"results":"'. addslashes(json_encode($data)) .'","user_id":"'.$user['id'].'"}]';
+        die();
+    }
 
-		//For each user within five miles, add them to the dataset
-		while($user_details = mysqli_fetch_array($result, MYSQLI_ASSOC)){
-			if($user_details['distance'] < 5){
-				unset($user_details['distance']);
-				unset($user_details['last_known_lat']);
-				unset($user_details['last_known_long']);
-				array_push($data, $user_details);
-			}
-		}
+    if($_POST['action'] == "SendLocation"){
+        if(!isset($_POST['latitude']) || !isset($_POST['longitude'])){
+            stdout(array(array("status" => "400", "info" => "You need to supply a latitude and longitude")));
+        }
 
-		//Return a result
-		echo '[{"results":"'. addslashes(json_encode($data)) .'","user_id":"'.$user['id'].'"}]';
+        //Update the user's location on the DB
+        $query = "UPDATE users SET last_known_lat='" . $_POST['latitude'] . "', last_known_long='". $_POST['longitude'] ."', display_location=". $_POST['show'] ." WHERE id=" . $user['id'];
+file_put_contents(__DIR__ . '/data.log', $query);
+        $result = mysqli_query($conn, $query);
 
-		//Finish
-		die();
-	}
+file_put_contents(__DIR__ . '/data.log', mysqli_error($conn));
 
-	if($_POST['action'] == "SendLocation"){
-		if(!isset($_POST['latitude']) || !isset($_POST['longitude'])){
-			echo '[{"status":"400","info":"You need to supply a latitude and longitude"}]';
-			die();
-		}
-
-		//Update the user's location on the DB
-		$query = "UPDATE users SET last_known_lat='" . $_POST['latitude'] . "', last_known_long='". $_POST['longitude'] ."', display_location=". $_POST['show'] ." WHERE id=" . $user['id'];
-		$result = mysqli_query($conn, $query);
-
-		done();
-	}
+        done();
+    }
 
 	//Sending out one of these will cause a new local conversation to be initialised on the requesting device and the receiving device.
 	if($_POST['action'] == "SendNewJourneyRequest"){

@@ -13,6 +13,7 @@ CREATE TABLE users(
 	location_id int(3) NOT NULL,
 	last_known_lat VARCHAR(20) NULL,
 	last_known_long VARCHAR(20) NULL,
+        display_location CHAR(1) DEFAULT '0',
 	PRIMARY KEY(id)
 );
 
