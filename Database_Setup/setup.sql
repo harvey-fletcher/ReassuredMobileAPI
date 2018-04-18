@@ -131,3 +131,14 @@ ADD COLUMN activated CHAR(1) DEFAULT '0';
 
 ALTER TABLE users
 ADD COLUMN activation_code VARCHAR(10) NOT NULL;
+
+/*This table is used to approve pending actions*/
+CREATE TABLE pending_actions(
+  `id` INT(10) AUTO_INCREMENT,
+  `action` VARCHAR(1000) NOT NULL,
+  `passkey` VARCHAR(10) NOT NULL,
+  `completed` CHAR(1) DEFAULT '0',
+  `created` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `affects_user_id` INT(10) NOT NULL,
+  PRIMARY KEY(id)
+);
