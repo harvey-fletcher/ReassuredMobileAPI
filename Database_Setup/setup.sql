@@ -30,13 +30,34 @@ CREATE TABLE company_calendar(
 
 /*A list of company teams*/
 CREATE TABLE teams(
-	id int(3) AUTO_INCREMENT,
-	team_name VARCHAR(40) NOT NULL,
-	PRIMARY KEY(id)
+  id int(3) AUTO_INCREMENT,
+  team_name VARCHAR(40) NOT NULL,
+  team_leader_user_id INT(10) DEFAULT 1,
+  PRIMARY KEY(id)
 );
 
 /*Insert the teams into the database so they can be selected*/
-INSERT INTO teams(`team_name`) VALUES ('IT'), ('HR'), ('Marketing'), ('Sales'), ('QA'), ('Processing'), ('Finance'), ('Remediation'), ('Facilities');
+INSERT INTO teams(
+  `team_name`
+) VALUES (
+  'IT'
+), (
+  'HR'
+), (
+  'Marketing'
+), (
+  'Sales'
+), (
+  'QA'
+), (
+  'Processing'
+), (
+  'Finance'
+), (
+  'Remediation'
+), (
+  'Facilities'
+);
 
 /*A list of company locations*/
 CREATE TABLE locations(
