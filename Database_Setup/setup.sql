@@ -35,7 +35,7 @@ CREATE TABLE teams(
 	PRIMARY KEY(id)
 );
 
-/*Insert the teams into the database so they can be selected*/)
+/*Insert the teams into the database so they can be selected*/
 INSERT INTO teams(`team_name`) VALUES ('IT'), ('HR'), ('Marketing'), ('Sales'), ('QA'), ('Processing'), ('Finance'), ('Remediation'), ('Facilities');
 
 /*A list of company locations*/
@@ -47,13 +47,13 @@ CREATE TABLE locations(
 
 /*Insert the locations into the database so that they can be selected*/
 INSERT INTO locations(
-	`location_name`
+  `location_name`
 ) VALUES (
-	'Basingstoke'
+  'Basingstoke'
 ), (
-	'Manchester'
+  'Manchester'
 ), (
-	'Portsmouth'
+  'Portsmouth'
 );
 
 /* This table is mainly used by the notifications API for FCM and messaging. It stores the tokens */
