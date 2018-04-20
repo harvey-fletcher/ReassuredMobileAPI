@@ -1,14 +1,44 @@
 <?php
 
-	//API_settings
-	include_once('api_settings.php');
+    //API_settings
+    include_once('api_settings.php');
 
-	$items = array();
-	$output = array();
+    //Common Functions including sendFCM();
+    include_once('common_functions.php');
 
-	$ExistingTrafficEvents = file_get_contents($api_root . "trafficCount.txt");
+    //This is the data files
+    $DF = array(
+            "Count" => __DIR__ . '/trafficCount.txt',
+            "Data" => __DIR__ . '/traffic.txt',
+        );
 
-	$inputStream = shell_exec('curl http://m.highways.gov.uk/feeds/rss/UnplannedEvents.xml');
+    //Blank arrays for storing data
+    $items = array();
+    $output = array();
+
+    //The existing number of known traffic events
+    $ExistingTrafficEvents = file_get_contents($DF['Count']);
+
+    //Initialise a curl to get the data
+    $curl = curl_init();
+
+    //Setup the options for the curl
+    curl_setopt_array($curl, array(
+                CURLOPT_URL => $external_endpoints['highways'],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "GET",
+                CURLOPT_HTTPHEADER => array(
+                        "Cache-Control: no-cache",
+                    ),
+            )
+        );
+
+    //Execute the curl
+    $inputStream = curl_exec($curl);
 
 	$inputStream = str_replace('<', '&lt;', $inputStream);
 	$inputStream = str_replace('>', '&gt;<br />', $inputStream);
@@ -82,13 +112,19 @@
 		}
 	}
 
-	if(sizeof($data) > $ExistingTrafficEvents){
-		$command = 'curl "' .$api_hostname . 'notifications.php?email=' . $administrator_email  .  '&password=' . $administrator_password  .  '&notification_type=traffic&to_group=all"';
-		shell_exec($command);
-	}
+    if(sizeof($data) > $ExistingTrafficEvents){
+        $Notification = array(
+                "data" => array(
+                        "notification_type" => "traffic"
+                    )
+            );
 
-	unlink($api_root . "traffic.txt");	
-	unlink($api_root . "trafficCount.txt");
-	file_put_contents($api_root . "traffic.txt", json_encode($data));
-	file_put_contents($api_root . "trafficCount.txt", sizeof($data));
+        sendFCM(array(1), $Notification);
+        print_r(array("success" => "notification sent"));
+    }
+
+    unlink(__DIR__ . "/traffic.txt");
+    unlink(__DIR__ . "/trafficCount.txt");
+    file_put_contents(__DIR__ . "/traffic.txt", json_encode($data));
+    file_put_contents(__DIR__ . "/trafficCount.txt", sizeof($data));
 ?>
