@@ -104,3 +104,64 @@
             stdout(array("error" => 403, "info" => "Wait! You're not the CRM! Your token is wrong!"));
         }
     }
+
+    //This function builds a meeting invite for outlook.
+    function outlookMeetingRequest($invited, $location, $date, $startTime, $endTime, $subject, $desc){
+        /**
+            INPUT PARAMETERS
+
+            $attendees = array(
+                    user_id_of_a_user,
+                    user_id_of_another_user,
+                    and_so_on
+                );
+
+            $location = where your meeting is
+
+            $date = YYYYMMDD
+            $startTime = HHMM
+            $endTime = HHMM
+
+            $subject = the name of your meeting
+
+            $desc = description of your meeting
+
+        **/
+
+        $attendees = array();
+
+        foreach($invited as $invitee){
+            $invitee = mysqli_fetch_array(mysqli_query($GLOBALS['conn'], "SELECT firstname, lastname, email FROM users WHERE id =" . $invitee), MYSQLI_ASSOC);
+            array_push($attendees, array($invitee['firstname'] . " " . $invitee['lastname'], $invitee['email']));
+        }
+
+        $organizer          = $GLOBALS['USER']['firstname'] . " " . $GLOBALS['USER']['lastname'];
+        $organizer_email    = $GLOBALS['USER']['email'];
+
+        $headers = 'Content-Type:text/calendar; Content-Disposition: inline; charset=utf-8;\r\n';
+
+        $message =  "BEGIN:VCALENDAR\r\n";
+        $message .= "VERSION:2.0\r\n";
+        $message .= "PRODID:-//Deathstar-mailer//theforce/NONSGML v1.0//EN\r\n";
+        $message .= "METHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:" . md5(uniqid(mt_rand(), true)) . "example.com\r\n";
+        $message .= "DTSTAMP:" . gmdate('Ymd').'T'. gmdate('His') . "Z\r\n";
+        $message .= "DTSTART:".$date."T".$startTime."00Z\r\n";
+
+        $message .= "DTEND:".$date."T".$endTime."00Z\r\n";
+        $message .= "SUMMARY:".$subject."\r\n";
+        $message .= "ORGANIZER;CN=".$organizer.":mailto:".$organizer_email."\r\n";
+        $message .= "LOCATION:".$location."\r\n";
+        $message .= "DESCRIPTION:".$desc."\r\n";
+
+        foreach($attendees as $attendee){
+            $message .= "ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN".$attendee[0].";X-NUM-GUESTS=0:MAILTO:".$attendee[1]."\r\n";
+        }
+        $message .= "END:VEVENT\r\n";
+        $message .= "END:VCALENDAR\r\n";
+
+        $headers .= $message;
+
+        foreach($attendees as $attendee){
+            mail($attendee[1], $subject, $message, $headers);
+        }
+    }

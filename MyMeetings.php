@@ -62,7 +62,7 @@
             }
 
             //If the user is the organizer, is invited to, or attending the meeting, display it in the today[] array.
-            if(($GLOBALS['USER']['id'] == $meeting['organizer']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
+            if(($GLOBALS['USER']['id'] == $meeting['organizer_id']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
                 array_push($data['today'], json_encode($meeting, JSON_FORCE_OBJECT));
             }
         }
@@ -316,19 +316,26 @@
         //This is a string of tokens for FCM notifications
         $tokens = array();
 
-        //Add each user's token to the list so that they will get a notificaation
+        //Get the date and time of meeting in email friendly format
+        $date = str_replace("-", "", substr($_POST['start_time'], 0, 10));
+        $startTime = substr(str_replace(":","", substr($_POST['start_time'], -8)), 0, 4);
+        $endTime = date('Hi', strtotime("+" . $_POST['duration'] . " MINUTE", strtotime($_POST['start_time'])));
+
+        //Send the email meeting request to all invitees
+        outlookMeetingRequest($invitees, $_POST['venueName'], $date, $startTime, $endTime, $_POST['name'], $_POST['name'] . "\\n\\nThis meeting was created via the Reassured Mobile App.");
+
+        //Build an FCM notification
+        $Notification = array(
+                "data" => array(
+                        "notification_type" => "meeting",
+                        "information" => $firstname . " " . $lastname . " has invited you to their meeting."
+                    ),
+            );
+
+        //Send each user an FCM notification
         foreach($invitees as $invitee){
-            $query = "SELECT application_token FROM application_tokens WHERE user_id=".$invitee;
-            $result = mysqli_query($conn, $query);
-
-            while($item = mysqli_fetch_array($result, MYSQLI_ASSOC)){
-                array_push($tokens, $item['application_token']);
-            }
+            sendFCM(array(3, 1), $Notification);
         }
-
-        $CURLdata = '{"data":{"notification_type":"meeting","information":"' . $firstname . ' ' . $lastname . ' has invited you to their meeting."},"registration_ids":'. json_encode($tokens) .'}';
-
-	sendCURL($notifications_key, $CURLdata);
     }
 
 
