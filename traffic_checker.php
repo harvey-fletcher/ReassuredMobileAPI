@@ -67,7 +67,7 @@
 
         //Set up the item to have only the fields we want
         $output[$alert] = array(
-                0 => $details,                                                                                   //Precise location of the incident
+                0 => trim($details),                                                                             //Precise location of the incident
                 1 => $output[$alert][3]["value"],                                                                //The name of the road
                 2 => explode(" | ", $output[$alert][8]["value"])[2],                                             //The cause of the incident
                 3 => $output[$alert][10]["value"] . " " .  explode(" | ", $output[$alert][8]["value"])[1],       //The Road name and direction
