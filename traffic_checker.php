@@ -40,78 +40,50 @@
     //Execute the curl
     $inputStream = curl_exec($curl);
 
-	$inputStream = str_replace('<', '&lt;', $inputStream);
-	$inputStream = str_replace('>', '&gt;<br />', $inputStream);
+    //Create an XML parser
+    $p = xml_parser_create();
 
-	$xmlArray = explode('<br />', $inputStream);
+    //Parse the XML
+    xml_parse_into_struct($p, $inputStream, $outputStream);
 
-	foreach(range(0, 32) as $element){
-		array_shift($xmlArray);
-	}
+    //Remove the two undesired <rss> and <channel> tags
+    array_shift($outputStream);
+    array_shift($outputStream);
+    array_pop($outputStream);
+    array_pop($outputStream);
 
-	$xmlArray = array_chunk($xmlArray, 38);
+    //There are still 15 undesired tags at the beginning of the array. Remove them.
+    foreach(range(0, 15) as $element){
+        array_shift($outputStream);
+    }
 
-	foreach($xmlArray as $item){
-		foreach($item as $tag){
-			if(strpos($tag, '/')){
-				array_push($items, $tag);
-			};
-		}
-	}
+    //Split up the array into individual items
+    $output = array_chunk($outputStream, 20);
 
-	foreach($items as $item){
-		array_push($output, substr($item, 0, strpos($item, '&lt;')));
-	}
+    //We want to retrieve a subset of data from the fields on all the items
+    foreach(range(0, sizeof($output) - 1) as $alert){
+        //Split up the details of the event so we get a precise location,
+        $details = str_replace("Location : The ", "", explode("\n", $output[$alert][4]["value"])[0]);
 
-	foreach(range(0,2) as $end){
-		array_pop($output);
-	}
+        //Set up the item to have only the fields we want
+        $output[$alert] = array(
+                0 => $details,                                                                                   //Precise location of the incident
+                1 => $output[$alert][3]["value"],                                                                //The name of the road
+                2 => explode(" | ", $output[$alert][8]["value"])[2],                                             //The cause of the incident
+                3 => $output[$alert][10]["value"] . " " .  explode(" | ", $output[$alert][8]["value"])[1],       //The Road name and direction
+                4 => $output[$alert][12]["value"]                                                                //County
+            );
+    }
 
-	$output = array_chunk($output, 19);
+    //We only want to output the events which are happening within the 3 county area.
+    foreach($output as $event){
+        if($event["4"] == "Hampshire" || $event["4"] == "Surrey" || $event["4"] == "Berkshire"){
+            $data[] = json_encode($event, JSON_FORCE_OBJECT);
+        }
+    }
 
-	$event = 0;
-	foreach(range(0, sizeof($output) - 1) as $alert){
-		unset($output[$alert][0]);
-		unset($output[$alert][1]);
-		unset($output[$alert][3]);
-		unset($output[$alert][4]);
-                unset($output[$alert][5]);
-                unset($output[$alert][6]);
-                unset($output[$alert][8]);
-		unset($output[$alert][9]);
-		unset($output[$alert][10]);
-                unset($output[$alert][12]);
-                unset($output[$alert][13]);
-		unset($output[$alert][14]);
-                unset($output[$alert][15]);
-                unset($output[$alert][16]);
-                unset($output[$alert][17]);
-                unset($output[$alert][18]);
-		$output[$alert] = array_values($output[$alert]);
-
-	}
-
-	foreach(range(0, sizeof($output) - 1) as $alert){
-		$output[$alert][1] = explode("|",$output[$alert][1]);
-
-		foreach($output[$alert][1] as $detail){
-			array_push($output[$alert], trim(str_replace("|","",rtrim($detail))));
-		}
-
-		unset($output[$alert][1]);
-		$output[$alert] = array_values($output[$alert]);
-	}
-
-	$data = array();
-
-	foreach($output as $event){
-		if((in_array('Hampshire', $event) || in_array('Berkshire', $event)  || in_array('Surrey', $event))&& !in_array('No Delay', $event)){
-			unset($event[1]);
-			$event = array_values($event);
-			array_push($data, json_encode($event, JSON_FORCE_OBJECT));
-		}
-	}
-
+    //Compare the number of traffic events with the previous count, if it is greater,
+    //send an FCM notification via the function in common_functions.php
     if(sizeof($data) > $ExistingTrafficEvents){
         $Notification = array(
                 "data" => array(
@@ -120,11 +92,13 @@
             );
 
         sendFCM(array(1), $Notification);
-        print_r(array("success" => "notification sent"));
     }
 
-    unlink(__DIR__ . "/traffic.txt");
-    unlink(__DIR__ . "/trafficCount.txt");
-    file_put_contents(__DIR__ . "/traffic.txt", json_encode($data));
-    file_put_contents(__DIR__ . "/trafficCount.txt", sizeof($data));
+    //Overwrite the data storage files.
+    file_put_contents($DF['Data'], json_encode($data));
+    file_put_contents($DF['Count'], sizeof($data));
+
+    if(sizeof($argv) > 1){
+        print_r($data);
+    }
 ?>
