@@ -99,6 +99,13 @@
     file_put_contents($DF['Count'], sizeof($data));
 
     if(sizeof($argv) > 1){
-        print_r($data);
+        if(in_array("-v", $argv) !== false){
+            print_r($data);
+        }
+
+        if(in_array("-c", $argv) !== false){
+            file_put_contents($DF['Data'], "[]");
+            file_put_contents($DF['Count'], 0);
+        }
     }
 ?>

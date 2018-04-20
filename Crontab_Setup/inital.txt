@@ -8,4 +8,11 @@
 ## This entry runs at 6am every weekday to alert the user of any calendar events happening today
 0 6 * * 1-5 cd /var/www/html/ReassuredMobileApp/Scripts && php CheckCalendarEventsToday.php
 ##
+## This entry runs every 5 minutes at peak AM commute on weekdays only to check traffic
+*/5 7-8 * * 1-5 cd /var/www/html/ReassuredMobileApp/ && php traffic_checker.php
+## This entry runs every 5 minutes at peak PM commute on weekdays only to check traffic
+*/5 16-17 * * 1-5 cd /var/www/html/ReassuredMobileApp/ && php traffic_checker.php
+## And this entry runs to clear the entries that were entered
+5 9,18 * * 1-5 cd /var/www/html/ReassuredMobileApp/ && php traffic_checker.php -c
+##
 ####
