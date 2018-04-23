@@ -75,6 +75,10 @@
             );
     }
 
+    // Declare an array for the output so that we can add traffic items into it.
+    // if it is not set here, we get an undefined index when we try to do sizeof() > $ExistingTrafficEvents
+    $data = array();
+
     //We only want to output the events which are happening within the 3 county area.
     foreach($output as $event){
         if($event["4"] == "Hampshire" || $event["4"] == "Surrey" || $event["4"] == "Berkshire"){
