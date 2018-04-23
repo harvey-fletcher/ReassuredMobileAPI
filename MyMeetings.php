@@ -301,7 +301,7 @@
 	echo '[{"status":"200"}]';
 
 	//We want to invite the other people to the meeting
-	InviteAttendees($conn, $GLOBALS['USER']['firstname'], $GLOBALS['USER']['lastname'], $_POST['invitees'], $notifications_key);
+	InviteAttendees($conn, $GLOBALS['USER']['firstname'], $GLOBALS['USER']['lastname'], $_POST['invitees']);
 
 	//Insert the new meeting into our table
 	$query = "INSERT INTO scheduled_meetings (`organizer_id`,`location`,`title`,`start_time`,`duration`,`invited`) VALUES ('".$GLOBALS['USER']['id']."','".$_POST['venueName']."','".$_POST['name']."','". $_POST['start_time'] ."','".$_POST['duration']."','".json_encode($_POST['invitees'])."')";
@@ -312,7 +312,7 @@
     }
 
     //This function gets user IDs of those invited, gets their tokens, and sends them a meeting notification
-    function InviteAttendees($conn, $firstname, $lastname, $invitees, $notifications_key){
+    function InviteAttendees($conn, $firstname, $lastname, $invitees){
         //This is a string of tokens for FCM notifications
         $tokens = array();
 
