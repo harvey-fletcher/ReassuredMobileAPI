@@ -301,7 +301,7 @@
 	echo '[{"status":"200"}]';
 
 	//We want to invite the other people to the meeting
-	InviteAttendees($conn, $GLOBALS['USER']['firstname'], $GLOBALS['USER']['lastname'], $_POST['invitees'], $notifications_key);
+	InviteAttendees($conn, $GLOBALS['USER']['firstname'], $GLOBALS['USER']['lastname'], $_POST['invitees']);
 
 	//Insert the new meeting into our table
 	$query = "INSERT INTO scheduled_meetings (`organizer_id`,`location`,`title`,`start_time`,`duration`,`invited`) VALUES ('".$GLOBALS['USER']['id']."','".$_POST['venueName']."','".$_POST['name']."','". $_POST['start_time'] ."','".$_POST['duration']."','".json_encode($_POST['invitees'])."')";
@@ -312,7 +312,7 @@
     }
 
     //This function gets user IDs of those invited, gets their tokens, and sends them a meeting notification
-    function InviteAttendees($conn, $firstname, $lastname, $invitees, $notifications_key){
+    function InviteAttendees($conn, $firstname, $lastname, $invitees){
         //This is a string of tokens for FCM notifications
         $tokens = array();
 
@@ -336,19 +336,6 @@
         foreach($invitees as $invitee){
             sendFCM(array(3, 1), $Notification);
         }
-    }
-
-
-    //This function will send the CURLdata via FCM;
-    function sendCURL($notifications_key, $CURLdata){
-        //Build the curl request command WITH the data in it
-        $command = "curl -X POST --Header 'Authorization: key=". $notifications_key  ."' --Header 'Content-Type: application/json' -d '" . $CURLdata . "' 'http://fcm.googleapis.com/fcm/send'";
-
-        //Execute the curl request $command and store it as an array
-        $output = array();
-        $output = json_decode(shell_exec($command));
-
-        echo '[{"status":"200","info":"notifications sent"}]';
     }
 
     //Return the data in a JSON Array
