@@ -85,7 +85,7 @@
                 $meeting['can_accept'] = 0;
             }
 
-            if(($GLOBALS['USER']['id'] == $meeting['organizer']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
+            if(($GLOBALS['USER']['id'] == $meeting['organizer_id']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
                 array_push($data['tomorrow'], json_encode($meeting, JSON_FORCE_OBJECT));
             }
         }
@@ -112,7 +112,7 @@
             }
 
             //If the user is the organiser, is invited, or is attending the meeting, add them to the output.
-            if(($GLOBALS['USER']['id'] == $meeting['organizer']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
+            if(($GLOBALS['USER']['id'] == $meeting['organizer_id']) || in_array($GLOBALS['USER']['id'], $invited) || in_array($GLOBALS['USER']['id'], $attending)){
                 array_push($data['future'], json_encode($meeting, JSON_FORCE_OBJECT));
             }
         }
