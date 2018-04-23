@@ -338,19 +338,6 @@
         }
     }
 
-
-    //This function will send the CURLdata via FCM;
-    function sendCURL($notifications_key, $CURLdata){
-        //Build the curl request command WITH the data in it
-        $command = "curl -X POST --Header 'Authorization: key=". $notifications_key  ."' --Header 'Content-Type: application/json' -d '" . $CURLdata . "' 'http://fcm.googleapis.com/fcm/send'";
-
-        //Execute the curl request $command and store it as an array
-        $output = array();
-        $output = json_decode(shell_exec($command));
-
-        echo '[{"status":"200","info":"notifications sent"}]';
-    }
-
     //Return the data in a JSON Array
     function done($data){
         echo json_encode($data);
