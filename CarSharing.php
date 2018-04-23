@@ -35,6 +35,23 @@
     //Execute the requested function
     $GLOBALS['_POST']['action']();
 
+    //This function will tell the user's team that they are running late.
+    function LateNotification(){
+        //Build a notification to send
+        $Notification = array(
+                "data" => array(
+                        "notification_type" => "late",
+                        "affected_user" => $GLOBALS['USER']['firstname'] . " " . $GLOBALS['USER']['lastname'],
+                    ),
+            );
+
+        //Make a call to common_functions.php to send a notification
+        sendFCM(array(2, $GLOBALS['USER']['team_id']), $Notification);
+
+        //Return a success
+        stdout(array("status" => "200", "info" => "Your team has been informed. Thanks."));
+    }
+
     //This will send a notification to all registered devices, and request their locations
     function RequestAll(){
         //Build the request notification
