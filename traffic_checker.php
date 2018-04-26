@@ -103,7 +103,7 @@
     file_put_contents($DF['Count'], sizeof($data));
 
     //What to do if there are extra parameters
-    if(sizeof($argv) > 1){
+    if(isset($argv[1])){
         if(in_array("-v", $argv) !== false){
             print_r($data);
         }
