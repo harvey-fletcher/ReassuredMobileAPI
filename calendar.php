@@ -53,6 +53,10 @@
                     $query = "INSERT INTO company_calendar (`event_name`,`event_organiser`,`event_start`,`event_information`,`event_location`) VALUES ('". $event_name  ."','". $event_organiser ."','". $event_start  ."','". $event_information  ."','". $event_location ."')";
                     $result = mysqli_query($GLOBALS['conn'], $query);
 
+                    if(mysqli_error($GLOBALS['conn'])){
+                        stdout(array("status" => 500, "reason" => explode("'", mysqli_error( $GLOBALS['conn']))[1] . " field has an error." ) );
+                    }
+
                     //This is the data we want to send in the notification
                     $data = array(
                             "data" => array(
