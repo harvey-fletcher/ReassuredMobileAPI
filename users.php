@@ -182,6 +182,9 @@
     }
 
     function ActivateAccount(){
+        //We actually want to display as a HTML page.
+        header('Content-Type: text/html');
+
         //Only attempt account activation if a code was provided, otherwise, fail straight away
         if(isset($_GET['code'])){
             //Only update rows that match the code and have not yet been activated.
