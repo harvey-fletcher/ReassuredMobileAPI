@@ -259,6 +259,12 @@
     }
 
     if($action == "MeetingRoomBook"){
+        //Start background processor
+        ob_end_clean();
+        header("Connection: close");
+        ignore_user_abort(true);
+        ob_start();
+
         //Check we have all the data that we need to book out the meeting room
         if(!isset($_POST['start_time'])){
             $data = '{"status":"400","info":"You must specify a start_time"}';
@@ -280,6 +286,14 @@
             done($data);
         }
 
+        //Return success and drop the user HERE and continue to do stuff in the background.
+        echo json_encode(array(array("status" => 200)));
+
+        $size = ob_get_length();
+        header("Content-Length: $size");
+        ob_end_flush(); // All output buffers must be flushed here
+        flush();        // Force output to client
+
         //Since we have all the required data, store them as short names
         $eventStart = $_POST['start_time'];
         $interval = "PT" . $_POST['duration']. "M";
@@ -297,9 +311,6 @@
         //Execute the curl to get a list of available rooms
         $JoanResponse = json_decode(curl_exec($curl), true);
 
-        //Display a success to say the meeting is booked.
-	echo '[{"status":"200"}]';
-
 	//We want to invite the other people to the meeting
 	InviteAttendees($conn, $GLOBALS['USER']['firstname'], $GLOBALS['USER']['lastname'], $_POST['invitees']);
 
@@ -316,11 +327,20 @@
         //This is a string of tokens for FCM notifications
         $tokens = array();
 
-        //Get the date and time of meeting in email friendly format
-        $date = str_replace("-", "", substr($_POST['start_time'], 0, 10));
-        $startTime = substr(str_replace(":","", substr($_POST['start_time'], -8)), 0, 4);
-        $endTime = date('Hi', strtotime("+" . $_POST['duration'] . " MINUTE", strtotime($_POST['start_time'])));
-file_put_contents(__DIR__ . '/data.log', "{'start':'". $startTime ."', 'end':'". $endTime ."'}");
+        //Put the start date and time in the correct format
+        $date = date('Ymd\THis', strtotime($_POST['start_time']));
+
+        //Microsoft outlook was putting things in the wrong timezone, we need to move the start time back by 1 hour
+        $startTime = date( 'Ymd\THis' , strtotime('-1 HOUR', strtotime( $date )));
+
+        //We need to calculate the end time based off of the duration and the startTime calculated above
+        $endTime = date( 'Ymd\THis', strtotime( '+'. $_POST['duration'] . ' MINUTE', strtotime($startTime)  ) );
+
+        //Write to log file only if we are debugging
+        if($debug){
+            file_put_contents(__DIR__ . '/data.log', "{'start':'". $startTime ."', 'end':'". $endTime ."'}");
+        }
+
         //Send the email meeting request to all invitees
         outlookMeetingRequest($invitees, $_POST['venueName'], $date, $startTime, $endTime, $_POST['name'], $_POST['name'] . "\\n\\nThis meeting was created via the Reassured Mobile App.");
 

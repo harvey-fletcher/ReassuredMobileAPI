@@ -118,9 +118,8 @@
 
             $location = where your meeting is
 
-            $date = YYYYMMDD
-            $startTime = HHMM
-            $endTime = HHMM
+            $startTime = Ymd\THis
+            $endTime = Ymd\THis
 
             $subject = the name of your meeting
 
@@ -147,9 +146,10 @@
         $message .= "BEGIN:VEVENT\r\n";
         $message .= "UID:" . md5(uniqid(mt_rand(), true)) . "example.com\r\n";
         $message .= "DTSTAMP:" . gmdate('Ymd').'T'. gmdate('His') . "Z\r\n";
-        $message .= "DTSTART:".$date."T".$startTime."00Z\r\n";
 
-        $message .= "DTEND:".$date."T".$endTime."00Z\r\n";
+        $message .= "DTSTART:". $startTime ."Z\r\n";
+        $message .= "DTEND:". $endTime . "Z\r\n";
+
         $message .= "SUMMARY:".$subject."\r\n";
         $message .= "ORGANIZER;CN=".$organizer.":mailto:".$organizer_email."\r\n";
         $message .= "LOCATION:".$location."\r\n";
