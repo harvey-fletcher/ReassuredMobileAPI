@@ -320,7 +320,7 @@
         $date = str_replace("-", "", substr($_POST['start_time'], 0, 10));
         $startTime = substr(str_replace(":","", substr($_POST['start_time'], -8)), 0, 4);
         $endTime = date('Hi', strtotime("+" . $_POST['duration'] . " MINUTE", strtotime($_POST['start_time'])));
-
+file_put_contents(__DIR__ . '/data.log', "{'start':'". $startTime ."', 'end':'". $endTime ."'}");
         //Send the email meeting request to all invitees
         outlookMeetingRequest($invitees, $_POST['venueName'], $date, $startTime, $endTime, $_POST['name'], $_POST['name'] . "\\n\\nThis meeting was created via the Reassured Mobile App.");
 

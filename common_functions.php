@@ -143,7 +143,9 @@
         $message =  "BEGIN:VCALENDAR\r\n";
         $message .= "VERSION:2.0\r\n";
         $message .= "PRODID:-//Deathstar-mailer//theforce/NONSGML v1.0//EN\r\n";
-        $message .= "METHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:" . md5(uniqid(mt_rand(), true)) . "example.com\r\n";
+        $message .= "METHOD:REQUEST\r\n";
+        $message .= "BEGIN:VEVENT\r\n";
+        $message .= "UID:" . md5(uniqid(mt_rand(), true)) . "example.com\r\n";
         $message .= "DTSTAMP:" . gmdate('Ymd').'T'. gmdate('His') . "Z\r\n";
         $message .= "DTSTART:".$date."T".$startTime."00Z\r\n";
 
