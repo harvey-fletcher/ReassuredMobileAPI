@@ -11,8 +11,8 @@
     //This is the action that the user has requested
     $action = "";
 
-    //Take the received JSON array and convert it into a useable php array.
-    $_POST = json_decode($_POST['data'], true);
+    //Decode the input
+    $_POST = json_decode( trim( urldecode( file_get_contents('php://input') ), "data="  ), true );
 
     //Authorise the user
     auth($_POST['email'], $_POST['password']);
