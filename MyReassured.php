@@ -86,6 +86,9 @@
 
         //Make the request to FCM using common_functions.php function
         sendFCM(array(1), $Notification);
+
+        //Return a success
+        stdout(array("status" => 200, "success" => "New comment added."));
     }
 
     if($action == 'OnDemandRefresh'){
