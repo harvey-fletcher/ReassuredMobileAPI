@@ -51,6 +51,9 @@
 
         //Send the notifications to all the clients using the function in common_functions.php
         sendFCM(array(1), $Notification);
+
+        //Return a success
+        stdout(array("status" => 200, "success" => "Made bulletin post"));
     }
 
     //This block of code will add a new post
