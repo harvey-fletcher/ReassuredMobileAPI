@@ -129,11 +129,24 @@
 
         $attendees = array();
 
-        foreach($invited as $invitee){
-            $invitee = mysqli_fetch_array(mysqli_query($GLOBALS['conn'], "SELECT firstname, lastname, email FROM users WHERE id =" . $invitee), MYSQLI_ASSOC);
-            array_push($attendees, array($invitee['firstname'] . " " . $invitee['lastname'], $invitee['email']));
+        //If the user has specified offline invitees, build their details here
+        if(isset($_POST['offlineInvitees'])){
+            foreach($_POST['offlineInvitees'] as $olInvitee){
+                $invitee = explode('.', $olInvitee);
+                array_push($attendees, array($invitee[0] . " " . $invitee[1], $invitee[0] . '.' . $invitee[1] . '@reassured.co.uk'));
+            }
         }
 
+        //Get the details of all the online invitees
+        foreach($invited as $invitee){
+            //Online invitees do NOT have the id of 0
+            if($invitee != 0){
+                $invitee = mysqli_fetch_array(mysqli_query($GLOBALS['conn'], "SELECT firstname, lastname, email FROM users WHERE id =" . $invitee), MYSQLI_ASSOC);
+                array_push($attendees, array($invitee['firstname'] . " " . $invitee['lastname'], $invitee['email']));
+            };
+        }
+
+        //This is the organiser details
         $organizer          = $GLOBALS['USER']['firstname'] . " " . $GLOBALS['USER']['lastname'];
         $organizer_email    = $GLOBALS['USER']['email'];
 

@@ -344,6 +344,8 @@
 
     //This function gets user IDs of those invited, gets their tokens, and sends them a meeting notification
     function InviteAttendees($conn, $firstname, $lastname, $invitees){
+        global $debug;
+
         //This is a string of tokens for FCM notifications
         $tokens = array();
 
