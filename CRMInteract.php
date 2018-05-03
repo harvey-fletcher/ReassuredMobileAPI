@@ -15,7 +15,7 @@
 
     //Break up the input parameters
     foreach($input as $variable){
-        $variable = explode('=', $variable);
+        $variable = explode('=', urldecode($variable));
         $GLOBALS['Parameters'][$variable[0]] = $variable[1];
     }
 
@@ -34,17 +34,26 @@
 
     //This function will be called when the user takes a lead.
     function TakeLead(){
+        //Global Variables
+        global $Parameters;
+        global $conn;
+
+        //In order to do this, a firstname and surname needs to be provided
+        if(!isset($Parameters['firstname']) || !isset($Parameters['surname'])){
+            stdout(array("status" => 400, "error" => "You need to provide a firstname and a surname"));
+        }
+
         //The surname might contain +(mgr) or +(sales), remove it
-        if(strpos($GLOBALS['Parameters']['surname'], '+') !== false){
-            $GLOBALS['Parameters']['surname'] = substr($GLOBALS['Parameters']['surname'], 0, strpos($GLOBALS['Parameters']['surname'], '+'));
+        if(strpos($Parameters['surname'], '+') !== false){
+            $Parameters['surname'] = substr($Parameters['surname'], 0, strpos($Parameters['surname'], '+'));
         }
 
         //Insert the announcement as a MyReassured post
-        $query = "INSERT INTO bulletin_posts (`user_id`,`post_body`) VALUES ('1', '" . $GLOBALS['Parameters']['firstname'] . ' ' . $GLOBALS['Parameters']['surname']  . " has just taken a lead!\n\nGreat work " . $GLOBALS['Parameters']['firstname'] . "!')";
-        mysqli_query($GLOBALS['conn'], $query);
+        $query = "INSERT INTO bulletin_posts (`user_id`,`post_body`) VALUES ('1', '" . $Parameters['firstname'] . ' ' . $Parameters['surname']  . " has just taken a lead!\n\nGreat work " . $Parameters['firstname'] . "!')";
+        mysqli_query($conn, $query);
 
         //Get the ID of the inserted row
-        $PostBody = mysqli_fetch_array(mysqli_query($GLOBALS['conn'], "SELECT bp.id AS 'postID', u.firstname, u.lastname, bp.created, l.location_name, t.team_name, bp.post_body FROM bulletin_posts bp JOIN users u ON bp.user_id=u.id JOIN teams t on u.team_id = t.id JOIN locations l on u.location_id=l.id WHERE bp.id=" . mysqli_insert_id($GLOBALS['conn'])), MYSQLI_ASSOC);
+        $PostBody = mysqli_fetch_array(mysqli_query($conn, "SELECT bp.id AS 'postID', u.firstname, u.lastname, bp.created, l.location_name, t.team_name, bp.post_body FROM bulletin_posts bp JOIN users u ON bp.user_id=u.id JOIN teams t on u.team_id = t.id JOIN locations l on u.location_id=l.id WHERE bp.id=" . mysqli_insert_id($conn)), MYSQLI_ASSOC);
 
         //Build the data to send over FCM
         $Notification = array(
