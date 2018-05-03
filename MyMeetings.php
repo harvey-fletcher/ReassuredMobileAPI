@@ -216,10 +216,30 @@
 
         //Get the users that match the search term
         $query = "SELECT u.id, u.firstname, u.lastname, l.location_name FROM users u JOIN locations l ON u.location_id=l.id WHERE u.firstname LIKE '%". $searchTerm."%' OR u.lastname LIKE '%". $searchTerm."%' OR u.email LIKE '%". $searchTerm."%' OR CONCAT(u.firstname, ' ', u.lastname) LIKE '%". $searchTerm  ."%'";
-        $results = mysqli_query($conn, $query);
+        $results = array_values(mysqli_fetch_all(mysqli_query($conn, $query), MYSQLI_ASSOC));
+
+        //If there are no results
+        if(sizeof($results) == 0 ){
+            //Explode the search term into firstname and lastname
+            $User_Name = explode(' ', $_POST['searchterm']);
+
+            //Only if theres a firstname and lastname
+            if(sizeof($User_Name) > 1){
+                //Give the user an ID of 0, and add firstname and lastname
+                $FakeDetails = array(
+                        "id" =>'0',
+                        "firstname" =>  $User_Name[0],
+                        "lastname" => $User_Name[1],
+                        "location_name" => "This user is not on the app.\nThey will be emailed."
+                    );
+
+                //Add the fake user to the output
+                array_push($data, $FakeDetails);
+            }
+        }
 
         //The users get returned in an array, one by one add them to the array from the MYSQLI resultset
-        while($result = mysqli_fetch_array($results, MYSQLI_ASSOC)){
+        foreach($results as $result){
             array_push($data, json_encode($result, JSON_FORCE_OBJECT));
         }
 
