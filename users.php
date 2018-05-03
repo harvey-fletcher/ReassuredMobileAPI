@@ -177,6 +177,8 @@
                 } else {
                     stdout(array("status" => "500", "reason" => "Something went wrong, please try again"));
                 }
+            } else {
+                stdout(array("status" => "500", "reason" => "User already exists."));
             }
         }
     }
