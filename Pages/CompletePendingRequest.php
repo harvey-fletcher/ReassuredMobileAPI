@@ -6,6 +6,9 @@
     //We need the common functions file for FCM
     include_once('../common_functions.php');
 
+    //This is a HTML page, so we need this content type.
+    header('Content-Type: text');
+
     //Get the pending action matching the passkey
     $result = mysqli_fetch_array(mysqli_query($conn, "SELECT * FROM pending_actions WHERE passkey='" . $_GET['PassKey'] . "' AND completed=0 AND created >= NOW() - INTERVAL 2 HOUR"), MYSQLI_ASSOC);
 

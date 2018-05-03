@@ -47,6 +47,11 @@
         //Authenticate the user.
         auth($GLOBALS['_POST']['email'], $GLOBALS['_POST']['password']);
 
+        //Check that the correct fields are specified
+        if(!isset($GLOBALS['_POST']['firstname']) || !isset($GLOBALS['_POST']['surname'])){
+            stdout(array("error" => "you are missing some data. consult api docs."));
+        }
+
         //We don't want to update the name straight away, we want to ask their team leader first
         //Get the email address of the team leader
         $query = "SELECT * FROM teams t JOIN users u on t.team_leader_user_id=u.id WHERE t.id=" . $GLOBALS['USER']['team_id'];
