@@ -45,6 +45,8 @@
                     ),
             );
 
+        if($debug)file_put_contents(__DIR__ . '/data.log', json_encode($Notification));
+
         //Make a call to common_functions.php to send a notification
         sendFCM(array(2, $GLOBALS['USER']['team_id']), $Notification);
 
@@ -57,10 +59,13 @@
         //Build the request notification
         $Notification = array(
                 "data" => array(
+                        "requesting_user_id" => $GLOBALS['USER']['id'],
                         "notification_type" => "locationrequest",
                         "information" => "The server has requested the location of this device",
                     ),
             );
+
+
 
         //Send the notification using the common_functions.php
         sendFCM(array(1), $Notification);
@@ -102,19 +107,65 @@
     }
 
     function SendLocation(){
+        global $debug;
+        global $conn;
+
+        //A latitude and longitude must be provided, as this is how distance gets calculated.
         if(!isset($GLOBALS['_POST']['latitude']) || !isset($GLOBALS['_POST']['longitude'])){
             stdout(array(array("status" => "400", "info" => "You need to supply a latitude and longitude")));
         }
 
         //Update the user's location on the DB
         $query = "UPDATE users SET last_known_lat='" . $GLOBALS['_POST']['latitude'] . "', last_known_long='". $GLOBALS['_POST']['longitude'] ."', display_location=". $GLOBALS['_POST']['show'] ." WHERE id=" . $GLOBALS['USER']['id'];
-        $result = mysqli_query($GLOBALS['conn'], $query);
+        $result = mysqli_query($conn, $query);
 
         //If we are in debug, set api_settings.php, log the query
-        if($GLOBALS['debug']){
-            file_put_contents(__DIR__ . '/data.log', $query);
+        if($debug)file_put_contents(__DIR__ . '/data.log', json_encode($_POST));
+
+        //For ASYNC requests, we want to send back a notification to the requesting user
+        if(isset($GLOBALS['_POST']['requesting_user_id'])){
+            //Find the location of the requesting user
+            $query = "SELECT last_known_lat, last_known_long FROM users WHERE id = " . $GLOBALS['_POST']['requesting_user_id'];
+            $location = mysqli_fetch_array(mysqli_query($conn, $query), MYSQLI_ASSOC);
+
+            if($debug)file_put_contents(__DIR__ . '/data.log', json_encode($location));
+
+            //We need to find out if the user is within the 5 mile radius of the requesting user
+            $query = "SELECT u.id, ( ACOS( COS( RADIANS( ". $location['last_known_lat'] . " ) ) * COS ( RADIANS (u.last_known_lat) ) * COS ( RADIANS (u.last_known_long) - RADIANS( ". $location['last_known_long']  ." ) ) + SIN ( RADIANS( ". $location['last_known_lat'] ." ) ) * SIN ( RADIANS( u.last_known_lat ) )        ) * 3959 ) AS distance FROM users u WHERE u.id!=". $_POST['requesting_user_id'] ." AND display_location=1 ORDER BY distance ASC LIMIT 100";
+            $users = mysqli_fetch_all(mysqli_query($conn, $query), MYSQLI_NUM);
+
+            //By default, we're not going to display in the list
+            $inUserList = false;
+
+            //Check to see if the current user is in the search results
+            foreach($users as $user){
+                if($user[0] == $GLOBALS['USER']['id'])$inUserList = true;
+            }
+
+            //Debug Logging
+            if($debug)file_put_contents(__DIR__ . '/data.log', json_encode($users));
+
+            //If the user isnt in search results, exit.
+            if(!$inUserList)die();
+
+            //Build a notification
+            $Notification = array(
+                    "data" => array(
+                            "notification_type" => "CarSharingResponse",
+                            "requesting_user" => $GLOBALS['_POST']['requesting_user_id'],
+                            "user_id" => $GLOBALS['USER']['id'],
+                            "name" => $GLOBALS['USER']['firstname'] . " " . $GLOBALS['USER']['lastname']
+                        ),
+                );
+
+            //Debug Logging
+            if($debug)file_put_contents(__DIR__ . '/data.log', json_encode($Notification));
+
+            //Send notification
+            sendFCM(array(3, $GLOBALS['_POST']['requesting_user_id']), $Notification);
         }
 
+        //Return a success message
         stdout(array("status" => 200, "info" => "Request Successful"));
     }
 

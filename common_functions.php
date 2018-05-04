@@ -34,6 +34,9 @@
             4 - This group sends to everyone at a specified location. `$group = array(4, $location_id)`
         **/
 
+        //This function needs to know if debug is on or not
+        global $debug;
+
         //Each different group requires a different query.
         if($group[0] == 1)$query = "SELECT * FROM application_tokens";
         if($group[0] == 2)$query = "SELECT a.* FROM application_tokens a JOIN users u ON u.id=a.user_id WHERE u.team_id=" . $group[1];
@@ -72,7 +75,10 @@
             ));
 
         //Make the post request to the FCM service
-        curl_exec($curl);
+        $FCMResult = curl_exec($curl);
+
+        //Debug logging
+        if($debug)file_put_contents(__DIR__ . '/data.log', $FCMResult);
     }
 
     //Send an email in HTML format
